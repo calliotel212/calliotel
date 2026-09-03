@@ -1,0 +1,15 @@
+[Unit]
+Description=Calliotel Telegram Bot (webhook mode)
+After=network.target calliotel-api.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/true
+RemainAfterExit=yes
+
+# Telegram updates are handled by:
+# https://calliotel.com/api/telegram/miniapp/webhook
+# Do not run telegram_bot.py polling while that webhook is registered.
+
+[Install]
+WantedBy=multi-user.target

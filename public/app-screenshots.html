@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=660, initial-scale=1">
+<title>Calliotel App Store Screenshots</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif; display: flex; gap: 24px; padding: 24px; overflow-x: auto; }
+
+  .phone {
+    width: 393px;
+    height: 852px;
+    background: #060610;
+    border-radius: 50px;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    border: 2px solid #222;
+    box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05);
+  }
+
+  /* iOS Status Bar */
+  .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px 6px;
+    height: 54px;
+  }
+  .status-time { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: -0.2px; }
+  .status-icons { display: flex; align-items: center; gap: 6px; }
+  .signal-bars { display: flex; gap: 2px; align-items: flex-end; height: 12px; }
+  .signal-bars span { background: #fff; border-radius: 1px; width: 3px; }
+  .signal-bars span:nth-child(1) { height: 4px; }
+  .signal-bars span:nth-child(2) { height: 6px; }
+  .signal-bars span:nth-child(3) { height: 9px; }
+  .signal-bars span:nth-child(4) { height: 12px; }
+  .wifi-icon { width: 16px; height: 12px; position: relative; }
+  .battery { width: 25px; height: 13px; border: 1.5px solid rgba(255,255,255,0.7); border-radius: 3px; position: relative; }
+  .battery::after { content:''; position:absolute; right:-5px; top:3px; width:3px; height:6px; background:rgba(255,255,255,0.5); border-radius: 0 2px 2px 0; }
+  .battery-fill { background: #30d158; height: 100%; width: 78%; border-radius: 1px; }
+  .dynamic-island { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 126px; height: 37px; background: #000; border-radius: 20px; z-index: 10; }
+
+  .screen-content { padding: 0 0 80px; height: calc(100% - 54px); overflow: hidden; }
+
+  /* Tab Bar */
+  .tab-bar { position: absolute; bottom: 0; left: 0; right: 0; height: 82px; background: rgba(15,15,30,0.95); border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: flex-start; justify-content: space-around; padding-top: 12px; backdrop-filter: blur(20px); }
+  .tab-item { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.4; }
+  .tab-item.active { opacity: 1; }
+  .tab-icon { font-size: 22px; line-height: 1; }
+  .tab-label { font-size: 10px; font-weight: 600; color: #fff; letter-spacing: 0.2px; }
+  .tab-item.active .tab-label { color: #7c3aed; }
+
+  /* Colors */
+  --bg: #060610;
+  --card: #0f0f1e;
+  --border: rgba(255,255,255,0.06);
+  --primary: #7c3aed;
+  --primary-light: rgba(124,58,237,0.15);
+  --text: #ffffff;
+  --muted: rgba(255,255,255,0.45);
+  --green: #30d158;
+  --label: 11px;
+
+  /* Shared */
+  .page-header { padding: 20px 20px 12px; }
+  .page-title { font-size: 26px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+  .page-sub { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+
+  .card { background: #0f0f1e; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; margin: 0 16px 12px; overflow: hidden; }
+  .card-inner { padding: 16px; }
+
+  .pill { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .pill-green { background: rgba(48,209,88,0.15); color: #30d158; }
+  .pill-purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .pill-blue { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .pill-orange { background: rgba(251,146,60,0.15); color: #fb923c; }
+
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 0 16px; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .row-pad { padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+
+  .icon-box { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+
+  .label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35); text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 20px 8px; }
+
+  .btn { display: flex; align-items: center; justify-content: center; gap: 8px; border-radius: 14px; font-weight: 700; font-size: 16px; }
+  .btn-primary { background: #7c3aed; color: #fff; padding: 16px; margin: 0 16px; }
+  .btn-outline { background: rgba(124,58,237,0.1); color: #a78bfa; padding: 14px; margin: 0 16px; border: 1px solid rgba(124,58,237,0.25); }
+
+  /* Screen labels */
+  .screen-label { position: absolute; bottom: -30px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 13px; }
+</style>
+</head>
+<body>
+
+<!-- SCREEN 1: HOME DASHBOARD -->
+<div class="phone" id="screen1">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L15 3.5C13.2 1.6 10.7 0.5 8 0.5C5.3 0.5 2.8 1.6 1 3.5L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" fill="white" opacity="0.9"/><path d="M8 5.5C9.4 5.5 10.7 6.1 11.6 7L13 5.6C11.7 4.3 10 3.5 8 3.5C6 3.5 4.3 4.3 3 5.6L4.4 7C5.3 6.1 6.6 5.5 8 5.5Z" fill="white" opacity="0.9"/><circle cx="8" cy="10" r="1.5" fill="white"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div style="padding: 8px 20px 0; display:flex; justify-content:space-between; align-items:center;">
+    <div>
+      <div style="font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.4px;">Good morning 👋</div>
+      <div style="font-size:13px; color:rgba(255,255,255,0.45); margin-top:2px;">Manage your virtual numbers</div>
+    </div>
+    <div style="width:40px;height:40px;border-radius:50%;background:rgba(124,58,237,0.2);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#a78bfa;">J</div>
+  </div>
+
+  <!-- Wallet Card -->
+  <div style="margin:16px 16px 0; background:linear-gradient(135deg,#7c3aed,#4f46e5); border-radius:20px; padding:20px; position:relative; overflow:hidden;">
+    <div style="position:absolute;right:-20px;top:-20px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.06);"></div>
+    <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.8px;">Wallet Balance</div>
+    <div style="font-size:34px;font-weight:800;color:#fff;margin:6px 0;letter-spacing:-1px;">$25.00</div>
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <span class="pill" style="background:rgba(255,255,255,0.15);color:#fff;font-size:10px;">2 Active Numbers</span>
+      <span class="pill" style="background:rgba(48,209,88,0.2);color:#30d158;font-size:10px;">● Live</span>
+    </div>
+  </div>
+
+  <div class="label">Your Numbers</div>
+
+  <div class="card">
+    <div class="row-pad">
+      <div class="icon-box" style="background:rgba(48,209,88,0.12);">🇺🇸</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:#fff;">+1 (415) 555-0192</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;">United States · 14 days left</div>
+      </div>
+      <div style="text-align:right">
+        <span class="pill pill-green">Active</span>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px;">3 new SMS</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="row-pad">
+      <div class="icon-box" style="background:rgba(59,130,246,0.12);">🇬🇧</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;color:#fff;">+44 7700 900123</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.45);margin-top:2px;">United Kingdom · 28 days left</div>
+      </div>
+      <div>
+        <span class="pill pill-blue">Active</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin:0 16px;">
+    <div class="btn btn-primary">＋ Get a New Number</div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed" stroke="none"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="tab-label" style="color:#7c3aed;">Home</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.12 1.22 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <span class="tab-label">Numbers</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="tab-label">SMM</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="tab-label">Wallet</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">Profile</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 2: BUY NUMBER -->
+<div class="phone" id="screen2">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L15 3.5C13.2 1.6 10.7 0.5 8 0.5C5.3 0.5 2.8 1.6 1 3.5L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" fill="white" opacity="0.9"/><path d="M8 5.5C9.4 5.5 10.7 6.1 11.6 7L13 5.6C11.7 4.3 10 3.5 8 3.5C6 3.5 4.3 4.3 3 5.6L4.4 7C5.3 6.1 6.6 5.5 8 5.5Z" fill="white" opacity="0.9"/><circle cx="8" cy="10" r="1.5" fill="white"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div style="padding: 8px 20px 0;">
+    <div style="font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.4px;">Get a Number</div>
+    <div style="font-size:13px; color:rgba(255,255,255,0.45); margin-top:2px;">Choose your country & area code</div>
+  </div>
+
+  <div class="label">Select Country</div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 16px 16px;">
+    <div style="background:#7c3aed;border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:24px;">🇺🇸</span>
+      <div><div style="font-size:14px;font-weight:700;color:#fff;">United States</div><div style="font-size:11px;color:rgba(255,255,255,0.7);">from $2.50/mo</div></div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:24px;">🇨🇦</span>
+      <div><div style="font-size:14px;font-weight:700;color:#fff;">Canada</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">from $2.50/mo</div></div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:24px;">🇬🇧</span>
+      <div><div style="font-size:14px;font-weight:700;color:#fff;">United Kingdom</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">from $2.50/mo</div></div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:24px;">🇦🇺</span>
+      <div><div style="font-size:14px;font-weight:700;color:#fff;">Australia</div><div style="font-size:11px;color:rgba(255,255,255,0.45);">from $3.00/mo</div></div>
+    </div>
+  </div>
+
+  <div class="label">Available Numbers — US (415)</div>
+
+  <div class="card">
+    <div class="row-pad" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:#fff;">+1 (415) 555-0134</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">San Francisco, CA</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:#a78bfa;">$2.50</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);">per month</div>
+      </div>
+    </div>
+    <div class="row-pad" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:#fff;">+1 (415) 555-0271</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">San Francisco, CA</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:#a78bfa;">$2.50</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);">per month</div>
+      </div>
+    </div>
+    <div class="row-pad">
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:#fff;">+1 (415) 555-0398</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px;">San Francisco, CA</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:#a78bfa;">$2.50</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.35);">per month</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin:0 16px;">
+    <div class="btn btn-primary">⚡ Buy This Number — $2.50</div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="tab-label">Home</span>
+    </div>
+    <div class="tab-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed" stroke="#7c3aed" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.12 1.22 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <span class="tab-label" style="color:#7c3aed;">Numbers</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="tab-label">SMM</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="tab-label">Wallet</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">Profile</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 3: SMS INBOX -->
+<div class="phone" id="screen3">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L15 3.5C13.2 1.6 10.7 0.5 8 0.5C5.3 0.5 2.8 1.6 1 3.5L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" fill="white" opacity="0.9"/><path d="M8 5.5C9.4 5.5 10.7 6.1 11.6 7L13 5.6C11.7 4.3 10 3.5 8 3.5C6 3.5 4.3 4.3 3 5.6L4.4 7C5.3 6.1 6.6 5.5 8 5.5Z" fill="white" opacity="0.9"/><circle cx="8" cy="10" r="1.5" fill="white"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div style="padding: 8px 20px 0;">
+    <div style="font-size:22px; font-weight:800; color:#fff; letter-spacing:-0.4px;">+1 (415) 555-0192</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:4px;"><span class="pill pill-green">● Active</span><span style="font-size:12px;color:rgba(255,255,255,0.4);">United States · 14 days left</span></div>
+  </div>
+
+  <div class="label">SMS Inbox</div>
+
+  <!-- Messages -->
+  <div style="padding:0 16px;display:flex;flex-direction:column;gap:8px;">
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:700;color:#a78bfa;">Google</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);">2 min ago</div>
+      </div>
+      <div style="font-size:14px;color:#fff;line-height:1.4;">Your Google verification code is <span style="color:#30d158;font-weight:700;">847291</span>. Don't share this with anyone.</div>
+    </div>
+
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:700;color:#60a5fa;">WhatsApp</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);">1 hr ago</div>
+      </div>
+      <div style="font-size:14px;color:#fff;line-height:1.4;">Your WhatsApp code: <span style="color:#30d158;font-weight:700;">392-847</span>. You can also tap this link to verify...</div>
+    </div>
+
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:700;color:#f87171;">Instagram</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);">3 hrs ago</div>
+      </div>
+      <div style="font-size:14px;color:#fff;line-height:1.4;">Use <span style="color:#30d158;font-weight:700;">715 482</span> to log into Instagram. If you didn't request this, ignore it.</div>
+    </div>
+
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+        <div style="font-size:13px;font-weight:700;color:#fb923c;">TikTok</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);">Yesterday</div>
+      </div>
+      <div style="font-size:14px;color:#fff;line-height:1.4;">[TikTok] <span style="color:#30d158;font-weight:700;">291840</span> is your verification code, valid for 5 minutes.</div>
+    </div>
+  </div>
+
+  <!-- Send SMS button -->
+  <div style="margin:12px 16px 0;">
+    <div class="btn btn-outline">✉️ Send SMS from this number</div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="tab-label" style="color:#7c3aed;">Home</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.12 1.22 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <span class="tab-label">Numbers</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="tab-label">SMM</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="tab-label">Wallet</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">Profile</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 4: WALLET -->
+<div class="phone" id="screen4">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L15 3.5C13.2 1.6 10.7 0.5 8 0.5C5.3 0.5 2.8 1.6 1 3.5L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" fill="white" opacity="0.9"/><path d="M8 5.5C9.4 5.5 10.7 6.1 11.6 7L13 5.6C11.7 4.3 10 3.5 8 3.5C6 3.5 4.3 4.3 3 5.6L4.4 7C5.3 6.1 6.6 5.5 8 5.5Z" fill="white" opacity="0.9"/><circle cx="8" cy="10" r="1.5" fill="white"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div style="padding:8px 20px 0;">
+    <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.4px;">Wallet</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:2px;">Top up &amp; manage your balance</div>
+  </div>
+
+  <!-- Balance card -->
+  <div style="margin:14px 16px 0;background:linear-gradient(135deg,#4f46e5,#7c3aed,#a855f7);border-radius:20px;padding:22px;position:relative;overflow:hidden;">
+    <div style="position:absolute;right:-30px;bottom:-30px;width:150px;height:150px;border-radius:50%;background:rgba(255,255,255,0.05);"></div>
+    <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.8px;">Available Balance</div>
+    <div style="font-size:40px;font-weight:900;color:#fff;margin:8px 0 4px;letter-spacing:-1.5px;">$25.00</div>
+    <div style="font-size:12px;color:rgba(255,255,255,0.6);">Ready to use · No expiry</div>
+  </div>
+
+  <!-- Quick add -->
+  <div class="label">Quick Add</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 16px 16px;">
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;color:#fff;">$5</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">Quick</div>
+    </div>
+    <div style="background:#7c3aed;border-radius:12px;padding:12px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;color:#fff;">$20</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.7);margin-top:2px;">Popular</div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;color:#fff;">$50</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">Value</div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 4px;text-align:center;">
+      <div style="font-size:15px;font-weight:800;color:#fff;">$100</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;">Best</div>
+    </div>
+  </div>
+
+  <div style="margin:0 16px 12px;"><div class="btn btn-primary">💳 Top Up with Card</div></div>
+  <div style="margin:0 16px;"><div class="btn btn-outline">₿ Pay with Crypto</div></div>
+
+  <div class="label">Recent Transactions</div>
+
+  <div class="card">
+    <div class="row-pad" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div class="icon-box" style="background:rgba(48,209,88,0.1);font-size:16px;">＋</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:#fff;">Wallet Top Up</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);">July 6, 2026</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:#30d158;">+$20.00</div>
+    </div>
+    <div class="row-pad">
+      <div class="icon-box" style="background:rgba(124,58,237,0.1);font-size:16px;">📞</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600;color:#fff;">US Number Purchase</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);">July 5, 2026</div>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:rgba(255,255,255,0.6);">−$2.50</div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="tab-label">Home</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.12 1.22 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <span class="tab-label">Numbers</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="tab-label">SMM</span>
+    </div>
+    <div class="tab-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10" stroke="rgba(255,255,255,0.4)"/></svg>
+      <span class="tab-label" style="color:#7c3aed;">Wallet</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="tab-label">Profile</span>
+    </div>
+  </div>
+</div>
+
+<!-- SCREEN 5: PROFILE -->
+<div class="phone" id="screen5">
+  <div class="dynamic-island"></div>
+  <div class="status-bar">
+    <span class="status-time">9:41</span>
+    <div class="status-icons">
+      <div class="signal-bars"><span></span><span></span><span></span><span></span></div>
+      <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2.5C10.2 2.5 12.2 3.4 13.6 4.9L15 3.5C13.2 1.6 10.7 0.5 8 0.5C5.3 0.5 2.8 1.6 1 3.5L2.4 4.9C3.8 3.4 5.8 2.5 8 2.5Z" fill="white" opacity="0.9"/><path d="M8 5.5C9.4 5.5 10.7 6.1 11.6 7L13 5.6C11.7 4.3 10 3.5 8 3.5C6 3.5 4.3 4.3 3 5.6L4.4 7C5.3 6.1 6.6 5.5 8 5.5Z" fill="white" opacity="0.9"/><circle cx="8" cy="10" r="1.5" fill="white"/></svg>
+      <div class="battery"><div class="battery-fill"></div></div>
+    </div>
+  </div>
+
+  <div style="padding:14px 20px 0;display:flex;flex-direction:column;align-items:center;text-align:center;">
+    <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;margin-bottom:10px;">J</div>
+    <div style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.3px;">John Smith</div>
+    <div style="font-size:13px;color:rgba(255,255,255,0.45);margin-top:2px;">john@example.com</div>
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <span class="pill pill-green">● Active</span>
+      <span class="pill pill-purple">Reseller</span>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:16px 16px 0;">
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#a78bfa;">2</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">Numbers</div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#30d158;">$25</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">Balance</div>
+    </div>
+    <div style="background:#0f0f1e;border:1px solid rgba(255,255,255,0.06);border-radius:14px;padding:14px;text-align:center;">
+      <div style="font-size:22px;font-weight:800;color:#fb923c;">47</div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">SMS In</div>
+    </div>
+  </div>
+
+  <div class="label" style="margin-top:10px;">Settings</div>
+
+  <div class="card">
+    <div class="row-pad" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div class="icon-box" style="background:rgba(124,58,237,0.12);font-size:16px;">🔔</div>
+      <div style="flex:1;margin-left:4px;"><div style="font-size:14px;font-weight:600;color:#fff;">SMS Notifications</div></div>
+      <div style="width:44px;height:26px;background:#7c3aed;border-radius:13px;position:relative;"><div style="position:absolute;right:2px;top:2px;width:22px;height:22px;background:#fff;border-radius:50%;"></div></div>
+    </div>
+    <div class="row-pad" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+      <div class="icon-box" style="background:rgba(251,146,60,0.12);font-size:16px;">🔄</div>
+      <div style="flex:1;margin-left:4px;"><div style="font-size:14px;font-weight:600;color:#fff;">Auto-Renew Numbers</div></div>
+      <div style="width:44px;height:26px;background:#7c3aed;border-radius:13px;position:relative;"><div style="position:absolute;right:2px;top:2px;width:22px;height:22px;background:#fff;border-radius:50%;"></div></div>
+    </div>
+    <div class="row-pad">
+      <div class="icon-box" style="background:rgba(96,165,250,0.12);font-size:16px;">👥</div>
+      <div style="flex:1;margin-left:4px;"><div style="font-size:14px;font-weight:600;color:#fff;">Reseller Program</div><div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;">Earn 20% commission</div></div>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span class="tab-label">Home</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.82 19.79 19.79 0 01.12 1.22 2 2 0 012.1 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <span class="tab-label">Numbers</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      <span class="tab-label">SMM</span>
+    </div>
+    <div class="tab-item">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      <span class="tab-label">Wallet</span>
+    </div>
+    <div class="tab-item active">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="#7c3aed" stroke="#7c3aed" stroke-width="1"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4" fill="#7c3aed"/></svg>
+      <span class="tab-label" style="color:#7c3aed;">Profile</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

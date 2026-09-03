@@ -1,0 +1,262 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Theme CSS Variables ─────────────────────────────────────────────────────
+   :root / html.dark  = dark mode (app default)
+   html.light         = light mode
+   ─────────────────────────────────────────────────────────────────────────── */
+:root, html.dark {
+  --bg-page:          #080810;
+  --bg-card:          #1a1a1a;
+  --bg-card-2:        #222222;
+  --bg-input:         #1a1a1a;
+  --bg-hover:         rgba(255,255,255,0.04);
+  --text-1:           #ffffff;
+  --text-2:           #aaaaaa;
+  --text-3:           #666666;
+  --border-1:         #2a2a2a;
+  --border-2:         #1e1e1e;
+  --brand:            #F5A623;
+  --brand-dark:       #e8940f;
+  --nav-bg:           rgba(8,8,16,0.97);
+  --nav-border:       rgba(255,255,255,0.06);
+  --nav-text:         rgba(255,255,255,0.75);
+  --nav-text-hover-bg: rgba(245,166,35,0.12);
+  --bottom-nav-bg:    #080810;
+  --bottom-nav-border:#2a2a2a;
+  --bottom-nav-shadow:rgba(0,0,0,0.5);
+  --inactive-icon:    #F5A623;
+  --inactive-label:   #F5A623;
+  --keypad-key-bg:    #2e2e38;
+  --keypad-key-text:  #ffffff;
+  --keypad-key-sub:   #c4c4cc;
+  --keypad-key-border:transparent;
+  --login-btn-color:  rgba(255,255,255,0.75);
+  --login-btn-border: rgba(255,255,255,0.12);
+  --mobile-menu-bg:   rgba(8,8,16,0.97);
+  --mobile-menu-btn-bg: rgba(255,255,255,0.05);
+  --mobile-menu-btn-border: rgba(255,255,255,0.07);
+  --mobile-menu-divider: rgba(255,255,255,0.06);
+  --hamburger-bg:     rgba(255,255,255,0.07);
+  --hamburger-color:  #ffffff;
+  --divider:          rgba(255,255,255,0.1);
+  --search-placeholder: rgba(255,255,255,0.35);
+  --soft-fill:        rgba(255,255,255,0.06);
+  --soft-fill-2:      rgba(255,255,255,0.04);
+  --soft-border:      rgba(255,255,255,0.10);
+  --soft-border-2:    rgba(255,255,255,0.07);
+  --on-brand:         #000000;
+}
+
+html.light {
+  --bg-page:          #f5f5f5;
+  --bg-card:          #ffffff;
+  --bg-card-2:        #f0f0f0;
+  --bg-input:         #f8f8f8;
+  --bg-hover:         rgba(0,0,0,0.03);
+  --text-1:           #111111;
+  --text-2:           #555555;
+  --text-3:           #999999;
+  --border-1:         #e0e0e0;
+  --border-2:         #eaeaea;
+  --nav-bg:           rgba(255,255,255,0.97);
+  --nav-border:       rgba(0,0,0,0.08);
+  --nav-text:         rgba(0,0,0,0.6);
+  --nav-text-hover-bg: rgba(245,166,35,0.1);
+  --bottom-nav-bg:    #ffffff;
+  --bottom-nav-border:#e8e8e8;
+  --bottom-nav-shadow:rgba(0,0,0,0.08);
+  --inactive-icon:    #F5A623;
+  --inactive-label:   #F5A623;
+  --keypad-key-bg:    #ffffff;
+  --keypad-key-text:  #111111;
+  --keypad-key-sub:   #6b6b6b;
+  --keypad-key-border:#e2e2e6;
+  --login-btn-color:  rgba(0,0,0,0.65);
+  --login-btn-border: rgba(0,0,0,0.15);
+  --mobile-menu-bg:   rgba(255,255,255,0.98);
+  --mobile-menu-btn-bg: rgba(0,0,0,0.04);
+  --mobile-menu-btn-border: rgba(0,0,0,0.08);
+  --mobile-menu-divider: rgba(0,0,0,0.06);
+  --hamburger-bg:     rgba(0,0,0,0.06);
+  --hamburger-color:  #111111;
+  --divider:          rgba(0,0,0,0.1);
+  --search-placeholder: rgba(0,0,0,0.35);
+  --soft-fill:        rgba(0,0,0,0.04);
+  --soft-fill-2:      rgba(0,0,0,0.03);
+  --soft-border:      rgba(0,0,0,0.10);
+  --soft-border-2:    rgba(0,0,0,0.08);
+  --on-brand:         #000000;
+}
+
+/* Landing page always stays dark-themed (hardcoded dark background) —
+   exempt it from all light-mode text/bg overrides.
+   One rule covers every element that has no explicit inline color. */
+html.light .lp-root { color: #ffffff !important; }
+html.light .lp-root .text-white { color: #ffffff !important; }
+html.light .lp-root .text-gray-100 { color: #f3f4f6 !important; }
+html.light .lp-root .text-gray-300 { color: #d1d5db !important; }
+html.light .lp-root .text-gray-400 { color: #9ca3af !important; }
+html.light .lp-root .text-gray-500 { color: #6b7280 !important; }
+html.light .lp-root .bg-gray-900 { background-color: #111827 !important; }
+html.light .lp-root .bg-gray-800 { background-color: #1f2937 !important; }
+html.light .lp-root .border-gray-800 { border-color: #1f2937 !important; }
+html.light .lp-root .border-gray-700 { border-color: #374151 !important; }
+
+/* Tailwind dark-class overrides for light mode */
+html.light .bg-gray-950 { background-color: var(--bg-page) !important; }
+html.light .bg-gray-900 { background-color: var(--bg-card) !important; }
+html.light .bg-gray-900\/95 { background-color: var(--bg-card) !important; }
+html.light .bg-gray-900\/60 { background-color: rgba(255,255,255,0.8) !important; }
+html.light .bg-gray-800 { background-color: var(--bg-card-2) !important; }
+html.light .bg-gray-800\/60 { background-color: var(--bg-card-2) !important; }
+html.light .bg-gray-800\/30 { background-color: rgba(0,0,0,0.04) !important; }
+html.light .text-white { color: var(--text-1) !important; }
+html.light .text-gray-100 { color: #222222 !important; }
+html.light .text-gray-300 { color: #444444 !important; }
+html.light .text-gray-400 { color: var(--text-2) !important; }
+html.light .text-gray-500 { color: var(--text-3) !important; }
+html.light .border-gray-800 { border-color: var(--border-1) !important; }
+html.light .border-gray-700 { border-color: var(--border-1) !important; }
+
+/* Minimal box-sizing reset (Tailwind Preflight disabled — see tailwind.config.js) */
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Mobile: prevent iOS bounce exposing background under fixed bottom nav,
+   and disable tap-highlight blue flash on iOS / Android Chrome. */
+html, body {
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* Respect iPhone home-indicator + Android gesture bar safe area. */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+html.tg-miniapp body {
+  padding-bottom: var(--tg-safe-area-inset-bottom, 0px);
+}
+
+@layer utilities {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-float.delay-100 {
+    animation-delay: 0.1s;
+  }
+
+  .animate-float.delay-200 {
+    animation-delay: 0.2s;
+  }
+
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+
+  .animate-slide-in {
+    animation: slide-in 0.5s ease-out;
+  }
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+body {
+    margin: 0;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family:
+        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 3.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 0 0% 3.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 0 0% 3.9%;
+        --primary: 0 0% 9%;
+        --primary-foreground: 0 0% 98%;
+        --secondary: 0 0% 96.1%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96.1%;
+        --muted-foreground: 0 0% 45.1%;
+        --accent: 0 0% 96.1%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 89.8%;
+        --input: 0 0% 89.8%;
+        --ring: 0 0% 3.9%;
+        --chart-1: 12 76% 61%;
+        --chart-2: 173 58% 39%;
+        --chart-3: 197 37% 24%;
+        --chart-4: 43 74% 66%;
+        --chart-5: 27 87% 67%;
+        --radius: 0.5rem;
+    }
+    .dark {
+        /* Obsidian Tactical View - Enhanced Dark Mode */
+        --background: 240 15% 4%;
+        --foreground: 240 5% 100%;
+        --card: 240 12% 8%;
+        --card-foreground: 240 5% 100%;
+        --popover: 240 12% 8%;
+        --popover-foreground: 240 5% 100%;
+        --primary: 38 90% 55%;
+        --primary-foreground: 0 0% 5%;
+        --secondary: 240 10% 15%;
+        --secondary-foreground: 240 5% 100%;
+        --muted: 240 10% 15%;
+        --muted-foreground: 240 5% 65%;
+        --accent: 38 90% 55%;
+        --accent-foreground: 0 0% 5%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 240 10% 18%;
+        --input: 240 12% 12%;
+        --ring: 38 90% 55%;
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

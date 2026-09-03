@@ -1,0 +1,43 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# production
+/build
+/_server_backend/.venv
+**/venv/
+
+# secrets — never push
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.p12
+*.key
+credentials.json
+
+# bulky / not the product
+_live_snap/
+_play_release/
+_ios_preview_apk/
+*.apk
+*.aab
+*.ipa
+tap-arena/node_modules/
+shopdesk/node_modules/
+apex-tg/node_modules/
+
+# misc
+.DS_Store
+.cursor/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Core -->
+  <url><loc>https://calliotel.com/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2026-07-23</lastmod></url>
+
+  <!-- eSIM Data Plans -->
+  <url><loc>https://calliotel.com/esim</loc><changefreq>daily</changefreq><priority>0.97</priority><lastmod>2026-07-23</lastmod></url>
+
+  <!-- Virtual Numbers -->
+  <url><loc>https://calliotel.com/browse-numbers</loc><changefreq>daily</changefreq><priority>0.95</priority><lastmod>2026-07-23</lastmod></url>
+  <url><loc>https://calliotel.com/premium-numbers</loc><changefreq>weekly</changefreq><priority>0.80</priority><lastmod>2026-07-23</lastmod></url>
+  <url><loc>https://calliotel.com/otp-numbers</loc><changefreq>daily</changefreq><priority>0.90</priority><lastmod>2026-07-23</lastmod></url>
+
+  <!-- Pricing -->
+  <url><loc>https://calliotel.com/pricing</loc><changefreq>weekly</changefreq><priority>0.85</priority><lastmod>2026-07-23</lastmod></url>
+  <url><loc>https://calliotel.com/global-pricing</loc><changefreq>weekly</changefreq><priority>0.78</priority><lastmod>2026-07-23</lastmod></url>
+
+  <!-- Reseller & Coverage -->
+  <url><loc>https://calliotel.com/reseller-program</loc><changefreq>monthly</changefreq><priority>0.72</priority><lastmod>2026-07-23</lastmod></url>
+  <url><loc>https://calliotel.com/coverage</loc><changefreq>monthly</changefreq><priority>0.70</priority><lastmod>2026-07-23</lastmod></url>
+
+  <!-- Auth / Support -->
+  <url><loc>https://calliotel.com/signup</loc><changefreq>monthly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/login</loc><changefreq>monthly</changefreq><priority>0.68</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/help</loc><changefreq>monthly</changefreq><priority>0.65</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Legal -->
+  <url><loc>https://calliotel.com/privacy</loc><changefreq>yearly</changefreq><priority>0.40</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/terms</loc><changefreq>yearly</changefreq><priority>0.40</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/refund-policy</loc><changefreq>yearly</changefreq><priority>0.35</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- ── Country Authority Pages ── -->
+  <!-- North America -->
+  <url><loc>https://calliotel.com/virtual-number/us</loc><changefreq>weekly</changefreq><priority>0.95</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/ca</loc><changefreq>weekly</changefreq><priority>0.90</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/mx</loc><changefreq>weekly</changefreq><priority>0.85</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Europe -->
+  <url><loc>https://calliotel.com/virtual-number/uk</loc><changefreq>weekly</changefreq><priority>0.93</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/de</loc><changefreq>weekly</changefreq><priority>0.90</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/fr</loc><changefreq>weekly</changefreq><priority>0.89</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/nl</loc><changefreq>weekly</changefreq><priority>0.87</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/es</loc><changefreq>weekly</changefreq><priority>0.87</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/it</loc><changefreq>weekly</changefreq><priority>0.86</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/pl</loc><changefreq>weekly</changefreq><priority>0.83</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/se</loc><changefreq>weekly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/tr</loc><changefreq>weekly</changefreq><priority>0.83</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/ru</loc><changefreq>weekly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Middle East -->
+  <url><loc>https://calliotel.com/virtual-number/ae</loc><changefreq>weekly</changefreq><priority>0.91</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/sa</loc><changefreq>weekly</changefreq><priority>0.89</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/il</loc><changefreq>weekly</changefreq><priority>0.83</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/lb</loc><changefreq>weekly</changefreq><priority>0.78</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/jo</loc><changefreq>weekly</changefreq><priority>0.76</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Asia & Oceania -->
+  <url><loc>https://calliotel.com/virtual-number/in</loc><changefreq>weekly</changefreq><priority>0.91</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/au</loc><changefreq>weekly</changefreq><priority>0.89</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/sg</loc><changefreq>weekly</changefreq><priority>0.85</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/jp</loc><changefreq>weekly</changefreq><priority>0.84</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/kr</loc><changefreq>weekly</changefreq><priority>0.83</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/hk</loc><changefreq>weekly</changefreq><priority>0.81</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/id</loc><changefreq>weekly</changefreq><priority>0.85</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/my</loc><changefreq>weekly</changefreq><priority>0.81</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/th</loc><changefreq>weekly</changefreq><priority>0.83</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/ph</loc><changefreq>weekly</changefreq><priority>0.84</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/vn</loc><changefreq>weekly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/nz</loc><changefreq>weekly</changefreq><priority>0.78</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Africa -->
+  <url><loc>https://calliotel.com/virtual-number/ng</loc><changefreq>weekly</changefreq><priority>0.85</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/za</loc><changefreq>weekly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/eg</loc><changefreq>weekly</changefreq><priority>0.81</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/ke</loc><changefreq>weekly</changefreq><priority>0.78</priority><lastmod>2026-04-27</lastmod></url>
+
+  <!-- Latin America -->
+  <url><loc>https://calliotel.com/virtual-number/br</loc><changefreq>weekly</changefreq><priority>0.87</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/ar</loc><changefreq>weekly</changefreq><priority>0.82</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/cl</loc><changefreq>weekly</changefreq><priority>0.78</priority><lastmod>2026-04-27</lastmod></url>
+  <url><loc>https://calliotel.com/virtual-number/co</loc><changefreq>weekly</changefreq><priority>0.80</priority><lastmod>2026-04-27</lastmod></url>
+
+</urlset>

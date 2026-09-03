@@ -1,0 +1,33 @@
+{
+  "short_name": "Calliotel",
+  "name": "Calliotel - Global Virtual Phone Solutions",
+  "description": "Connect worldwide with premium virtual numbers for business & personal use. SMS, calls, voicemail, team accounts, and AI-powered features.",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "type": "image/png",
+      "sizes": "180x180",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#0A1628",
+  "background_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "categories": ["business", "communication", "social"],
+  "scope": "/",
+  "screenshots": []
+}

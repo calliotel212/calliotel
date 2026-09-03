@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.calliotel",
+      "sha256_cert_fingerprints": [
+        "EB:E4:03:83:38:05:62:7F:C4:7E:23:62:E9:5C:F7:CD:69:03:7E:F6:A0:CF:06:65:F0:00:D5:CE:C4:D9:AE:5E",
+        "2E:9A:DE:E6:CF:BF:37:EC:9D:5A:FB:73:71:29:04:26:71:B0:C9:88:4F:29:ED:12:03:4C:C5:0A:32:5F:18:3A"
+      ]
+    }
+  }
+]

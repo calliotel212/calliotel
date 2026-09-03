@@ -1,0 +1,29 @@
+# Calliotel
+
+> Calliotel is a virtual phone number platform providing real US, UK, Canadian, Australian, Puerto Rico, Netherlands, and Swedish numbers for SMS and voice. Instant activation, no ID required. Trusted by users in 100+ countries.
+
+## Services
+
+- [Virtual Numbers](https://calliotel.com/) — Real phone numbers for US, UK, CA, AU, PR, NL, SE. Receive SMS and calls. Active in 60 seconds.
+- [OTP Numbers](https://onetimeotp.com) — One-time verification codes belong on onetimeotp.com, not on a monthly Calliotel number.
+- [Pricing](https://calliotel.com/pricing) — Plans from $1.99/month. Annual plans available with up to 40% discount.
+- [Reseller Program](https://calliotel.com/reseller-program) — Earn 20% lifetime commission on every referred sale.
+
+## Pages
+
+- [Browse Numbers](https://calliotel.com/browse-numbers) — Search available numbers by country and area code.
+- [Sign Up](https://calliotel.com/signup) — Create an account to purchase a virtual number.
+- [Login](https://calliotel.com/login) — Access your dashboard.
+- [Payment](https://calliotel.com/payment) — Top up your wallet via card (2checkout) or crypto (NOWPayments).
+- [Privacy Policy](https://calliotel.com/privacy-policy) — How we handle your data.
+- [Terms of Service](https://calliotel.com/terms-of-service) — Usage terms and conditions.
+
+## Supported Countries
+
+US (United States), CA (Canada), GB (United Kingdom), AU (Australia), PR (Puerto Rico), NL (Netherlands), SE (Sweden).
+
+## Contact
+
+- WhatsApp: https://wa.me/96171525354
+- Telegram: https://t.me/calliotel
+- Website: https://calliotel.com

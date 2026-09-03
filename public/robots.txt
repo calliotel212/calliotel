@@ -1,0 +1,24 @@
+# Calliotel.com — robots.txt
+# Updated: 2026-04-13
+# Validator: https://www.google.com/webmasters/tools/robots-testing-tool
+
+User-agent: *
+Allow: /
+
+# Disallow private, admin, and API endpoints
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /api/
+Disallow: /account
+Disallow: /wallet
+Disallow: /sms
+Disallow: /chat
+Disallow: /my-numbers
+Disallow: /analytics
+Disallow: /referrals
+Disallow: /profile
+Disallow: /payment
+Disallow: /usdt-payment
+
+# Sitemap
+Sitemap: https://calliotel.com/sitemap.xml
