@@ -1,0 +1,11 @@
+# Backend dependencies for the secret-free local dev apps
+# (local_otp_app.py / local_fincra_app.py). These run against the in-memory
+# database (local_memory_db.py) so no MongoDB or production secrets are needed.
+# Install: python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements-local.txt
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+pydantic[email]==2.13.5
+PyJWT==2.15.0
+python-dotenv==1.2.3
+httpx==0.28.1
+pytest==9.1.1
