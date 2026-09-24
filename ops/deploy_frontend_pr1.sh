@@ -20,6 +20,7 @@ cd "$DIR" || { echo "STOP: folder $DIR not found"; exit 1; }
 
 TMP="$(mktemp -d)"
 blocked=0
+edit_app=0
 echo "== checking files in $DIR =="
 for f in $FILES; do
   mkdir -p "$TMP/base/$(dirname "$f")" "$TMP/new/$(dirname "$f")"
@@ -34,6 +35,14 @@ for f in $FILES; do
     echo "OK    $f (already updated)"
   elif [ "$has_base" = 1 ] && cmp -s "$f" "$TMP/base/$f"; then
     echo "COPY  $f"
+  elif [ "$f" = "src/App.js" ] && grep -q "EmailConfirmBanner" "$f"; then
+    echo "OK    $f (banner already wired in)"
+    cp "$f" "$TMP/new/$f"
+  elif [ "$f" = "src/App.js" ] \
+       && [ "$(grep -c 'const MobileAppBanner' "$f")" = 1 ] \
+       && [ "$(grep -c '<AnnouncementBanner />' "$f")" = 1 ]; then
+    echo "EDIT  $f (adds 2 lines for the email banner; keeps your other edits)"
+    edit_app=1
   else
     echo "DIFF  $f  <- your Mac copy has other edits; not overwriting"
     blocked=1
@@ -44,6 +53,16 @@ if [ "$blocked" = 1 ]; then
   echo
   echo "STOPPED before building. Nothing changed. Send Boss AI the DIFF lines above."
   exit 1
+fi
+
+if [ "$edit_app" = 1 ]; then
+  cp src/App.js "$TMP/new/src/App.js"
+  perl -0pi -e 's/(const MobileAppBanner[^\n]*\n)/$1const EmailConfirmBanner     = lazy(() => import(".\/components\/EmailConfirmBanner"));\n/' "$TMP/new/src/App.js"
+  perl -0pi -e 's/^([ \t]*)<AnnouncementBanner \/>/$1<EmailConfirmBanner \/>\n$1<AnnouncementBanner \/>/m' "$TMP/new/src/App.js"
+  if [ "$(grep -c 'EmailConfirmBanner' "$TMP/new/src/App.js")" != 2 ]; then
+    echo "STOP: could not add the banner to src/App.js. Nothing changed."
+    exit 1
+  fi
 fi
 
 mkdir -p "$TMP/mac_backup"
