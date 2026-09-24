@@ -228,15 +228,26 @@ async def buy_one_otp(body: BuyBody, current_user=Depends(get_current_user)):
                 provider_cost = cost
         _block_usa_whatsapp(service, iso2)
 
+        from services.paid_funds import assert_paid_covers
+        from services.wallet_guard import credit as wallet_credit
+        from services.wallet_guard import debit_if_funded
+
         wallet = await db.wallets.find_one({"user_id": user_id})
-        balance = float(wallet.get("balance", 0)) if wallet else 0.0
-        if balance < price:
+        assert_paid_covers(wallet, price)
+        reserved = await debit_if_funded(db, user_id, price)
+        if not reserved:
+            balance = float(wallet.get("balance", 0)) if wallet else 0.0
             raise HTTPException(
                 status_code=402,
                 detail=f"Insufficient balance. One OTP is ${price:.2f}. You have ${balance:.2f}.",
             )
+        balance = float(reserved.get("balance", 0))
 
-        purchased = await north.buy(service, iso2, max_price=north.max_provider_cost(service, price))
+        try:
+            purchased = await north.buy(service, iso2, max_price=north.max_provider_cost(service, price))
+        except Exception:
+            await wallet_credit(db, user_id, price)
+            raise
     except HTTPException:
         raise
     except north.NorthSmsError as e:
@@ -249,15 +260,13 @@ async def buy_one_otp(body: BuyBody, current_user=Depends(get_current_user)):
     order_id = purchased.get("code")
     phone = purchased.get("phoneNumber") or purchased.get("phone_number")
     if not order_id or not phone:
+        from services.wallet_guard import credit as wallet_credit
+        await wallet_credit(db, user_id, price)
         raise HTTPException(status_code=503, detail="Could not assign a number right now. Please try again.")
 
     now_iso = _now_iso()
     expires_at = _now() + timedelta(minutes=OTP_EXPIRE_MINUTES)
-    new_balance = round(balance - price, 2)
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$set": {"balance": new_balance, "updated_at": now_iso}},
-    )
+    new_balance = round(float(balance), 2)
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "debit",

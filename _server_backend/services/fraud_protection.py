@@ -36,7 +36,8 @@ LIMITS = {
     "number_purchase_per_user_24h": 4,    # max numbers per user per day
 
     # OTP number purchases
-    "otp_purchase_per_user_24h": 15,      # max OTP numbers per user per day
+    "otp_purchase_per_user_24h": 8,       # max OTP numbers per user per day
+    "otp_purchase_unpaid_per_user_24h": 0,  # unpaid accounts cannot buy provider OTP
 
     # New-account hold (minutes) before card payments are allowed — 3 days
     "new_account_hold_minutes": 4320,
@@ -292,6 +293,20 @@ async def record_number_purchase(
 
 async def check_otp_purchase(user_id: str, user_email: str) -> None:
     """Raise ValueError if this OTP purchase should be blocked."""
+    wallet = await db.wallets.find_one({"user_id": user_id})
+    paid = float((wallet or {}).get("lifetime_paid_usd") or 0)
+    if paid < 1.0:
+        await _log_block(
+            "otp_unpaid",
+            user_id,
+            "",
+            0,
+            "OTP blocked until $1 real top-up",
+        )
+        raise ValueError(
+            "Add at least $1.00 of real funds before buying OTP numbers. "
+            "Welcome credit cannot be used for this product."
+        )
     window = _window_iso()
     count = await db.fraud_events.count_documents({
         "type": "otp_purchase",

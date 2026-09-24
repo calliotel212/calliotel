@@ -347,8 +347,13 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
     plan_label = f"{req.months}-month plan" if req.months > 1 else "monthly plan"
 
     # ── 2. Wallet check ──
+    from services.paid_funds import assert_paid_covers
+    from services.wallet_guard import credit as wallet_credit
+    from services.wallet_guard import debit_if_funded
+
     wallet = await db.wallets.find_one({"user_id": user_id})
     balance = float(wallet.get("balance", 0)) if wallet else 0.0
+    assert_paid_covers(wallet, total_due)
 
     if balance < total_due:
         if req.months > 1:
@@ -402,6 +407,14 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
             ),
         )
 
+    reserved = await debit_if_funded(db, user_id, total_due)
+    if not reserved:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient balance. This number costs ${total_due:.2f}. Please add credits.",
+        )
+    balance = float(reserved.get("balance", 0))
+
     # ── 3. Purchase from Telnyx ──
     try:
         from services.telnyx_client import CALLIOTEL_MESSAGING_PROFILE_ID
@@ -437,21 +450,17 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
             pass
 
     except HTTPException:
+        await wallet_credit(db, user_id, total_due)
         raise
     except Exception as e:
+        await wallet_credit(db, user_id, total_due)
         logger.error(f"❌ Telnyx purchase error: {e}")
         raise HTTPException(
             status_code=502,
             detail="Number purchase failed. Please try again or contact support.",
         )
 
-    # ── 4. Deduct wallet ──
-    new_balance = balance - total_due
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$set": {"balance": new_balance, "updated_at": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
-    )
+    new_balance = round(float(balance), 2)
 
     # ── 5. Record subscription ──
     now = datetime.now(timezone.utc)

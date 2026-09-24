@@ -958,11 +958,8 @@ async def stripe_webhook(request: Request):
         now     = datetime.now(timezone.utc)
 
         # Credit wallet
-        await db.wallets.update_one(
-            {"user_id": user_id},
-            {"$inc": {"balance": amount_usd}},
-            upsert=True,
-        )
+        from services.paid_funds import record_paid_topup
+        await record_paid_topup(db, user_id, amount_usd)
         wallet_after = await db.wallets.find_one({"user_id": user_id})
         new_balance = float((wallet_after or {}).get("balance", amount_usd))
 
@@ -1094,11 +1091,8 @@ async def stripe_webhook(request: Request):
         email   = record.get("email", user_id)
         now     = datetime.now(timezone.utc)
 
-        await db.wallets.update_one(
-            {"user_id": user_id},
-            {"$inc": {"balance": amount_usd}},
-            upsert=True,
-        )
+        from services.paid_funds import record_paid_topup
+        await record_paid_topup(db, user_id, amount_usd)
         wallet_after = await db.wallets.find_one({"user_id": user_id})
         new_balance  = float((wallet_after or {}).get("balance", amount_usd))
 

@@ -169,11 +169,8 @@ async def _credit(record: dict, status: str) -> None:
     )
     if not claimed:
         return
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance": credits}, "$set": {"updated_at": now}},
-        upsert=True,
-    )
+    from services.paid_funds import record_paid_topup
+    await record_paid_topup(db, user_id, credits)
     tx_doc = {
         "user_id": user_id,
         "amount": credits,
