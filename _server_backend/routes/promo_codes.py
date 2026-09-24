@@ -9,7 +9,11 @@ from pydantic import BaseModel
 
 from database import db
 from routes.auth_deps import get_current_user
-from services.promo_guard import assert_promo_allowed, record_promo_redemption
+from services.promo_guard import (
+    assert_code_not_retired,
+    assert_promo_allowed,
+    record_promo_redemption,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -26,6 +30,7 @@ async def apply_promo_code(
     current_user=Depends(get_current_user),
 ):
     code = data.code.upper().strip()
+    assert_code_not_retired(code)
     user_id = str(current_user["_id"])
     ip = await assert_promo_allowed(db, current_user, request)
 

@@ -80,6 +80,15 @@ def test_welcome_credit_cannot_buy_number_on_legacy_wallet():
     asyncio.run(assert_real_funds_cover(paid_db, "u", {"balance": 15.0}, 1.99))
 
 
+def test_welcome5_is_retired():
+    from services.promo_guard import assert_code_not_retired
+
+    with pytest.raises(Exception) as exc:
+        assert_code_not_retired("welcome5")
+    assert getattr(exc.value, "status_code", None) == 404
+    assert_code_not_retired("SUMMER10")
+
+
 def test_extract_ip_uses_xff():
     class Req:
         headers = {"X-Forwarded-For": "203.0.113.9, 10.0.0.1"}

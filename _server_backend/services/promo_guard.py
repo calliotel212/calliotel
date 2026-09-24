@@ -14,6 +14,14 @@ from services.disposable_emails import is_disposable_email
 
 PROMO_IP_WINDOW_DAYS = 30
 
+# Signup bonuses were killed 2026-04-26; these codes kept paying out via /api/promo/apply.
+RETIRED_CODES = frozenset({"WELCOME5", "WELCOME", "WELCOME1", "WELCOME10", "SIGNUP5"})
+
+
+def assert_code_not_retired(code: str) -> None:
+    if (code or "").strip().upper() in RETIRED_CODES:
+        raise HTTPException(status_code=404, detail="Invalid or expired promo code")
+
 
 def extract_ip(request) -> str:
     if request is None:
