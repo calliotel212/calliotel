@@ -82,8 +82,19 @@ else
 fi
 echo "Site key set in $ENVF"
 
-echo "== building (a few minutes) =="
-if ! yarn build > "$TMP/build.log" 2>&1; then
+if command -v yarn >/dev/null 2>&1; then
+  BUILD_CMD="yarn build"
+elif command -v npm >/dev/null 2>&1; then
+  BUILD_CMD="npm run build"
+else
+  echo "STOP: neither yarn nor npm found (Node.js is not installed). Live site untouched."
+  for f in $FILES; do
+    if [ -f "$TMP/mac_backup/$f" ]; then cp "$TMP/mac_backup/$f" "$f"; else rm -f "$f"; fi
+  done
+  exit 1
+fi
+echo "== building with '$BUILD_CMD' (a few minutes) =="
+if ! $BUILD_CMD > "$TMP/build.log" 2>&1; then
   tail -30 "$TMP/build.log"
   echo "STOP: build failed. Live site untouched. Restoring Mac source files."
   for f in $FILES; do
