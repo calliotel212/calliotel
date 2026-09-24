@@ -28,8 +28,8 @@ ADMIN_EMAILS = [
 
 
 async def is_admin(current_user) -> bool:
-    user_email = current_user.get("_id") or current_user.get("email")
-    return user_email in ADMIN_EMAILS
+    from services.admin_gate import is_admin_user
+    return is_admin_user(current_user)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1100,7 +1100,7 @@ async def list_duplicate_accounts(
     current_user = Depends(get_current_user)
 ):
     """List IP-clusters with multiple signups (likely same person, different emails)."""
-    if not current_user.get("is_admin"):
+    if not await is_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin only")
 
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
@@ -1127,7 +1127,7 @@ async def list_duplicate_accounts(
 @router.post("/winback/run-now")
 async def trigger_winback(current_user = Depends(get_current_user)):
     """Manually fire the winback email job (also runs daily 11:30 UTC)."""
-    if not current_user.get("is_admin"):
+    if not await is_admin(current_user):
         raise HTTPException(status_code=403, detail="Admin only")
     from services.winback_email import run_winback
     result = await run_winback()

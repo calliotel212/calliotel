@@ -58,8 +58,8 @@ class UserSignup(BaseModel):
     
     @validator('password')
     def password_strength(cls, v):
-        if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters')
         return v
     
     @validator('birthday', always=True)
@@ -87,6 +87,7 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    totp_code: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
@@ -205,6 +206,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user = await db.users.find_one({"_id": user_id})
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
+        if user.get("banned"):
+            raise HTTPException(
+                status_code=403,
+                detail="This account has been suspended. Contact support@calliotel.com if you believe this is an error.",
+            )
         return user
     except HTTPException:
         raise
@@ -665,9 +671,13 @@ async def google_auth(data: GoogleAuthRequest):
         raise HTTPException(status_code=500, detail="Google sign-in failed")
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin):
+async def login(user_data: UserLogin, request: Request):
     try:
+        from services.auth_throttle import assert_not_throttled, record_attempt
+        ip = _client_ip(request)
         email_key = user_data.email.strip().lower()
+        await assert_not_throttled(db, kind="login", ip=ip, identity=email_key, limit=10, window_minutes=15)
+        await record_attempt(db, kind="login", ip=ip, identity=email_key)
         # Indexed equality lookup (avoid $regex COLLSCAN)
         user = await db.users.find_one({"email": email_key})
         if not user:
@@ -680,11 +690,8 @@ async def login(user_data: UserLogin):
                 norm = None
             if norm and norm != email_key:
                 user = await db.users.find_one({"email_normalized": norm})
-        if not user:
-            raise HTTPException(status_code=404, detail="No account found with this email.")
-        
-        if not verify_password(user_data.password, user["password"]):
-            raise HTTPException(status_code=401, detail="Incorrect password.")
+        if not user or not user.get("password") or not verify_password(user_data.password, user["password"]):
+            raise HTTPException(status_code=401, detail="Invalid email or password.")
 
         # Banned account check
         if user.get("banned", False):
@@ -693,6 +700,23 @@ async def login(user_data: UserLogin):
                 status_code=403,
                 detail="This account has been suspended. Contact support@calliotel.com if you believe this is an error."
             )
+
+        if user.get("two_factor_enabled"):
+            code = (user_data.totp_code or "").strip()
+            if not code:
+                raise HTTPException(status_code=401, detail="Two-factor code required.")
+            secret = user.get("totp_secret")
+            ok = False
+            if secret:
+                ok = pyotp.TOTP(secret).verify(code, valid_window=1)
+            if not ok and code.upper() in (user.get("backup_codes") or []):
+                ok = True
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$pull": {"backup_codes": code.upper()}},
+                )
+            if not ok:
+                raise HTTPException(status_code=401, detail="Invalid two-factor code.")
 
         # Generate client_id for existing users who don't have one
         if "client_id" not in user:

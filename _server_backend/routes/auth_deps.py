@@ -37,6 +37,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user = await db.users.find_one({"_id": user_id})
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
+        if user.get("banned"):
+            raise HTTPException(status_code=403, detail="This account has been suspended.")
         return user
     except HTTPException:
         raise

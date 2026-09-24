@@ -554,8 +554,8 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
 @router.get("/balance")
 async def get_telnyx_balance(current_user=Depends(get_current_user)):
     """Admin: get Telnyx provider account balance."""
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
     try:
         return await telnyx_get_balance()
     except Exception as e:
@@ -567,12 +567,8 @@ async def get_telnyx_balance(current_user=Depends(get_current_user)):
 @router.get("/admin/pricing")
 async def admin_pricing(current_user: dict = Depends(get_current_user)):
     """Admin: pricing breakdown per country."""
-    ADMIN_EMAILS = {
-        "admin@calliotel.com", "bigboss@calliotel.com", "alinmy77@gmail.com",
-        "worl212211@yahoo.com", "astor539@gmail.com",
-    }
-    if (current_user.get("email") or current_user.get("_id")) not in ADMIN_EMAILS:
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
 
     sample_countries = ["US", "GB", "CA", "AU", "BR", "MX", "NG", "SG", "PH", "PR"]
     results = []
@@ -625,13 +621,8 @@ async def cleanup_dead_numbers(
     Admin: find numbers in Telnyx account that have status != active,
     release them and mark DB records as expired.
     """
-    ADMIN_EMAILS = {
-        "admin@calliotel.com", "bigboss@calliotel.com", "alinmy77@gmail.com",
-        "worl212211@yahoo.com", "astor539@gmail.com",
-    }
-    user_ident = current_user.get("email") or current_user.get("_id")
-    if not current_user.get("is_admin") and user_ident not in ADMIN_EMAILS:
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
 
     all_numbers = await list_my_numbers()
     dead = [n for n in all_numbers if n.get("status") not in ("active", "port-in-started")]

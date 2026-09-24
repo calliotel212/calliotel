@@ -895,39 +895,39 @@ async def stripe_webhook(request: Request):
 
     stripe.api_key = STRIPE_SECRET_KEY
 
-    import json as _json
-    if STRIPE_WEBHOOK_SECRET:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
-        except stripe.error.SignatureVerificationError:
-            logger.warning("Stripe webhook signature invalid")
-            tg_alert_throttled(
-                "stripe-webhook-badsig",
-                f"🚨 Stripe webhook REJECTED\n"
-                f"❌ Invalid signature — a forged or misconfigured callback was refused\n"
-                f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-            )
-            raise HTTPException(400, "Invalid webhook signature")
-        except Exception as e:
-            logger.warning(f"Stripe webhook construct_event error: {e}")
-            tg_alert_throttled(
-                "stripe-webhook-error",
-                f"🚨 Stripe webhook ERROR\n"
-                f"❌ {e}\n"
-                f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
-            )
-            raise HTTPException(400, "Webhook error")
-    else:
-        logger.warning("Stripe webhook running WITHOUT signature verification — add STRIPE_WEBHOOK_SECRET")
-
-    # Parse event — handle both Stripe object (v5+) and plain dict
+    if not STRIPE_WEBHOOK_SECRET:
+        logger.error("STRIPE_WEBHOOK_SECRET missing — refusing unsigned wallet credit")
+        raise HTTPException(500, "Webhook is not configured")
     try:
-        raw = _json.loads(payload)
-    except Exception:
-        raise HTTPException(400, "Invalid webhook payload")
+        event = stripe.Webhook.construct_event(payload, sig, STRIPE_WEBHOOK_SECRET)
+    except stripe.error.SignatureVerificationError:
+        logger.warning("Stripe webhook signature invalid")
+        tg_alert_throttled(
+            "stripe-webhook-badsig",
+            f"🚨 Stripe webhook REJECTED\n"
+            f"❌ Invalid signature — a forged or misconfigured callback was refused\n"
+            f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        )
+        raise HTTPException(400, "Invalid webhook signature")
+    except Exception as e:
+        logger.warning(f"Stripe webhook construct_event error: {e}")
+        tg_alert_throttled(
+            "stripe-webhook-error",
+            f"🚨 Stripe webhook ERROR\n"
+            f"❌ {e}\n"
+            f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
+        )
+        raise HTTPException(400, "Webhook error")
 
-    event_type = raw.get("type", "")
-    session_data = raw.get("data", {}).get("object", {})
+    if isinstance(event, dict):
+        event_type = event.get("type", "")
+        session_data = (event.get("data") or {}).get("object") or {}
+    else:
+        event_type = getattr(event, "type", "") or ""
+        data = getattr(event, "data", None)
+        session_data = getattr(data, "object", None) or {}
+        if not isinstance(session_data, dict):
+            session_data = dict(session_data) if session_data is not None else {}
 
     # ── Payment completed ────────────────────────────────────────────────────
     if event_type == "checkout.session.completed":

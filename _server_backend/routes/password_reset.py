@@ -3,7 +3,7 @@ Password Reset Router
 Handles password reset requests and token validation
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, EmailStr
 import os
 import logging
@@ -25,13 +25,17 @@ class PasswordResetConfirm(BaseModel):
     new_password: str
 
 @router.post("/request-reset")
-async def request_password_reset(request: PasswordResetRequest):
+async def request_password_reset(request: PasswordResetRequest, http_request: Request):
     """
     Send password reset email with token
     """
     try:
-        # Indexed equality lookup (avoid $regex COLLSCAN)
+        from services.auth_throttle import assert_not_throttled, record_attempt
+        xff = http_request.headers.get("x-forwarded-for") or ""
+        ip = xff.split(",")[0].strip() if xff else (http_request.client.host if http_request.client else "")
         email_clean = request.email.strip().lower()
+        await assert_not_throttled(db, kind="pwreset", ip=ip, identity=email_clean, limit=5, window_minutes=30)
+        await record_attempt(db, kind="pwreset", ip=ip, identity=email_clean)
         user = await db.users.find_one({"email": email_clean}, {"_id": 0})
         if not user:
             user = await db.users.find_one({"email_normalized": email_clean}, {"_id": 0})
@@ -91,18 +95,17 @@ async def reset_password(request: PasswordResetConfirm):
     """
     try:
         # Find reset token
-        reset_record = await db.password_resets.find_one(
-            {"token": request.token, "used": False},
-            {"_id": 0}
+        reset_record = await db.password_resets.find_one_and_update(
+            {
+                "token": request.token,
+                "used": False,
+                "expires_at": {"$gt": datetime.now(timezone.utc).isoformat()},
+            },
+            {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}},
         )
         
         if not reset_record:
             raise HTTPException(status_code=400, detail="Invalid or expired reset token")
-        
-        # Check if token expired
-        expires_at = datetime.fromisoformat(reset_record["expires_at"])
-        if datetime.now(timezone.utc) > expires_at:
-            raise HTTPException(status_code=400, detail="Reset token has expired")
         
         # Validate password
         if len(request.new_password) < 8:
@@ -124,13 +127,11 @@ async def reset_password(request: PasswordResetConfirm):
             )
         
         if result.modified_count == 0:
+            await db.password_resets.update_one(
+                {"token": request.token},
+                {"$set": {"used": False}, "$unset": {"used_at": ""}},
+            )
             raise HTTPException(status_code=404, detail="User not found")
-        
-        # Mark token as used
-        await db.password_resets.update_one(
-            {"token": request.token},
-            {"$set": {"used": True, "used_at": datetime.now(timezone.utc).isoformat()}}
-        )
         
         logger.info(f"Password reset successful for {reset_record['email']}")
         
