@@ -283,6 +283,9 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
     Purchase a virtual number via Telnyx.
     Deducts from user wallet on success.
     """
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
+
     from services.user_approval import user_requires_approval
     if user_requires_approval(current_user):
         raise HTTPException(

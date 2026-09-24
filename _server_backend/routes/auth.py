@@ -55,6 +55,7 @@ class UserSignup(BaseModel):
     utm_term: Optional[str] = None
     landing_page: Optional[str] = None
     referrer: Optional[str] = None
+    turnstile_token: Optional[str] = None
     
     @validator('password')
     def password_strength(cls, v):
@@ -106,6 +107,7 @@ class UserResponse(BaseModel):
     parent_reseller_id: Optional[str] = None
     is_vip: Optional[bool] = False
     vip_since: Optional[str] = None
+    email_confirmation_required: Optional[bool] = False
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -229,6 +231,9 @@ def _client_ip(request: Request) -> str:
 @router.post("/signup", response_model=TokenResponse)
 async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, request: Request):
     try:
+        from services.turnstile import assert_human
+        await assert_human(user_data.turnstile_token, _client_ip(request))
+
         # Block disposable / temp-mail signups (saves ad spend on fake accounts)
         from services.disposable_emails import is_disposable_email, normalize_email
         if is_disposable_email(user_data.email):
@@ -363,7 +368,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
             "birthday": user_data.birthday,
             "client_id": client_id,
             "auth_provider": "email",
-            "email_verified": True,  # Auto-verified — no email gate
+            "email_verified": False,  # spending is gated until the emailed link is clicked
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "signup_ip": signup_ip,
@@ -414,7 +419,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         
         # Store verification token
         await db.verification_tokens.insert_one({
-            "email": user_data.email,
+            "email": email_lc,
             "token": verification_token,
             "expires_at": expires_at,
             "created_at": datetime.now(timezone.utc)
@@ -423,7 +428,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         # Send email in background
         background_tasks.add_task(
             send_verification_email,
-            user_data.email,
+            email_lc,
             verification_token,
             user_data.full_name or "User"
         )
@@ -459,9 +464,10 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
                 email=user_data.email,
                 full_name=user_data.full_name,
                 created_at=user_doc["created_at"],
-                email_verified=True,
+                email_verified=False,
                 client_id=client_id,
                 balance=new_balance,
+                email_confirmation_required=True,
             ),
             is_new_user=True,
         )
@@ -842,6 +848,11 @@ async def resend_verification(request: ResendVerificationRequest):
         logger.error(f"Resend verification error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to resend verification")
 
+def _needs_email_confirmation(user: dict) -> bool:
+    from services.email_gate import needs_email_confirmation
+    return needs_email_confirmation(user)
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user = Depends(get_current_user)):
     return UserResponse(
@@ -861,6 +872,7 @@ async def get_me(current_user = Depends(get_current_user)):
         parent_reseller_id=current_user.get("parent_reseller_id"),
         is_vip=bool(current_user.get("is_vip")),
         vip_since=(current_user.get("vip_since").isoformat() if hasattr(current_user.get("vip_since"), "isoformat") else current_user.get("vip_since")),
+        email_confirmation_required=_needs_email_confirmation(current_user),
     )
 
 @router.put("/me")

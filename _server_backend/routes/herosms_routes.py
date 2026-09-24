@@ -254,6 +254,8 @@ class BuyRequest(BaseModel):
 @router.post("/buy")
 async def buy_otp_number(req: BuyRequest, current_user=Depends(get_current_user)):
     """Purchase an OTP number and deduct from wallet."""
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     user_id = current_user["_id"]
 
     # 1. Get live price from provider

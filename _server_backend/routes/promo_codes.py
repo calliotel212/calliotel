@@ -29,6 +29,8 @@ async def apply_promo_code(
     request: Request,
     current_user=Depends(get_current_user),
 ):
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     code = data.code.upper().strip()
     assert_code_not_retired(code)
     user_id = str(current_user["_id"])

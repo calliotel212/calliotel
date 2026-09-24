@@ -159,6 +159,8 @@ async def availability(service: str, country: str = "auto"):
 
 @router.post("/buy")
 async def buy_one_otp(body: BuyBody, current_user=Depends(get_current_user)):
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     if not north.configured() and os.environ.get("LOCAL_OTP_DEV") != "1":
         raise HTTPException(
             status_code=503,

@@ -162,7 +162,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (email, password, fullName, birthday, referralCode = null, termsAccepted = false) => {
+  const signup = async (email, password, fullName, birthday, referralCode = null, termsAccepted = false, turnstileToken = '') => {
     try {
       const payload = {
         email: (email || '').trim().toLowerCase(),
@@ -170,6 +170,7 @@ export const AuthProvider = ({ children }) => {
         full_name: fullName,
         terms_accepted: !!termsAccepted,
       };
+      if (turnstileToken) payload.turnstile_token = turnstileToken;
       // Only send birthday when set — empty string previously caused API 422.
       if (birthday && String(birthday).trim()) payload.birthday = String(birthday).trim();
       if (referralCode) payload.referral_code = referralCode;

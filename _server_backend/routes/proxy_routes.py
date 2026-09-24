@@ -141,6 +141,8 @@ async def quote(country: str, period: int = 5, amount: int = 1):
 
 @router.post("/buy")
 async def buy_proxy(body: BuyBody, current_user: dict = Depends(get_current_user)):
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     cookie = await smspva.load_cookie(db)
     if not smspva.configured(cookie):
         raise HTTPException(

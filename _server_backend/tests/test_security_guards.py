@@ -89,6 +89,38 @@ def test_welcome5_is_retired():
     assert_code_not_retired("SUMMER10")
 
 
+def test_email_gate_only_blocks_new_unconfirmed_email_signups():
+    from services.email_gate import needs_email_confirmation, require_confirmed_email
+
+    assert needs_email_confirmation({"auth_provider": "email", "email_verified": False, "email": "a@b.com"})
+    assert not needs_email_confirmation({"auth_provider": "email", "email_verified": True})
+    assert not needs_email_confirmation({"auth_provider": "email"})
+    assert not needs_email_confirmation({"auth_provider": "google", "email_verified": False})
+    assert not needs_email_confirmation({"auth_provider": "telegram", "email_verified": False})
+    with pytest.raises(Exception) as exc:
+        require_confirmed_email({"auth_provider": "email", "email_verified": False, "email": "a@b.com"})
+    assert getattr(exc.value, "status_code", None) == 403
+
+
+def test_turnstile_is_off_without_secret(monkeypatch):
+    import asyncio
+    from services.turnstile import assert_human, turnstile_enabled
+
+    monkeypatch.delenv("TURNSTILE_SECRET_KEY", raising=False)
+    assert not turnstile_enabled()
+    asyncio.run(assert_human(None))
+
+
+def test_turnstile_requires_token_when_secret_set(monkeypatch):
+    import asyncio
+    from services.turnstile import assert_human
+
+    monkeypatch.setenv("TURNSTILE_SECRET_KEY", "test-secret")
+    with pytest.raises(Exception) as exc:
+        asyncio.run(assert_human(""))
+    assert getattr(exc.value, "status_code", None) == 400
+
+
 def test_extract_ip_uses_xff():
     class Req:
         headers = {"X-Forwarded-For": "203.0.113.9, 10.0.0.1"}
