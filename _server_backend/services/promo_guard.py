@@ -1,9 +1,7 @@
-"""Promo / WELCOME5 anti-farm rules.
+"""Promo / WELCOME5 anti-farm rules for bots — real customers still get the bonus.
 
-Maximum lock (2026-09-24 probes):
   • Disposable / reserved / probe emails cannot redeem
-  • Wallet must have at least $1 of real lifetime top-ups
-  • One promo redemption per IP per 30 days
+  • One promo redemption per IP per 30 days (stops rotating-email farms)
   • One redemption of a given code per account (enforced by caller used_by)
 """
 from __future__ import annotations
@@ -13,7 +11,6 @@ from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
 
 from services.disposable_emails import is_disposable_email
-from services.paid_funds import MIN_PAID_FOR_PROMO_USD, lifetime_paid
 
 PROMO_IP_WINDOW_DAYS = 30
 
@@ -34,17 +31,6 @@ async def assert_promo_allowed(db, current_user: dict, request=None) -> str:
         raise HTTPException(
             status_code=400,
             detail="Promo codes cannot be applied on this account.",
-        )
-
-    user_id = str(current_user["_id"])
-    wallet = await db.wallets.find_one({"user_id": user_id})
-    if lifetime_paid(wallet) < MIN_PAID_FOR_PROMO_USD:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Add at least $1.00 of real funds before applying a promo code. "
-                "This stops bonus farming."
-            ),
         )
 
     ip = extract_ip(request)

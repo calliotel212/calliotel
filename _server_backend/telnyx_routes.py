@@ -347,13 +347,11 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
     plan_label = f"{req.months}-month plan" if req.months > 1 else "monthly plan"
 
     # ── 2. Wallet check ──
-    from services.paid_funds import assert_paid_covers
     from services.wallet_guard import credit as wallet_credit
     from services.wallet_guard import debit_if_funded
 
     wallet = await db.wallets.find_one({"user_id": user_id})
     balance = float(wallet.get("balance", 0)) if wallet else 0.0
-    assert_paid_covers(wallet, total_due)
 
     if balance < total_due:
         if req.months > 1:

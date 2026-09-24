@@ -58,8 +58,8 @@ class UserSignup(BaseModel):
     
     @validator('password')
     def password_strength(cls, v):
-        if len(v) < 8:
-            raise ValueError('Password must be at least 8 characters')
+        if len(v) < 6:
+            raise ValueError('Password must be at least 6 characters')
         return v
     
     @validator('birthday', always=True)
@@ -690,8 +690,10 @@ async def login(user_data: UserLogin, request: Request):
                 norm = None
             if norm and norm != email_key:
                 user = await db.users.find_one({"email_normalized": norm})
-        if not user or not user.get("password") or not verify_password(user_data.password, user["password"]):
-            raise HTTPException(status_code=401, detail="Invalid email or password.")
+        if not user:
+            raise HTTPException(status_code=404, detail="No account found with this email.")
+        if not user.get("password") or not verify_password(user_data.password, user["password"]):
+            raise HTTPException(status_code=401, detail="Incorrect password.")
 
         # Banned account check
         if user.get("banned", False):

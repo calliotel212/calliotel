@@ -207,12 +207,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, totpCode) => {
     try {
-      const response = await axios.post(`${API}/auth/login`, {
+      const payload = {
         email: (email || '').trim().toLowerCase(),
         password,
-      });
+      };
+      if (totpCode && String(totpCode).trim()) {
+        payload.totp_code = String(totpCode).trim();
+      }
+      const response = await axios.post(`${API}/auth/login`, payload);
       const { access_token, user: userData } = response.data;
       safeLocalStorage.setItem('token', access_token);
       setCachedUser(userData);

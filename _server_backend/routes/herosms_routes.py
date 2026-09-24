@@ -284,12 +284,10 @@ async def buy_otp_number(req: BuyRequest, current_user=Depends(get_current_user)
     except ValueError as fraud_err:
         raise HTTPException(status_code=429, detail=str(fraud_err))
 
-    from services.paid_funds import assert_paid_covers
     from services.wallet_guard import credit as wallet_credit
     from services.wallet_guard import debit_if_funded
 
     wallet  = await db.wallets.find_one({"user_id": user_id})
-    assert_paid_covers(wallet, user_price)
     reserved = await debit_if_funded(db, user_id, user_price)
     if not reserved:
         balance = float(wallet.get("balance", 0)) if wallet else 0.0

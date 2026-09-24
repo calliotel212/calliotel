@@ -228,12 +228,10 @@ async def buy_one_otp(body: BuyBody, current_user=Depends(get_current_user)):
                 provider_cost = cost
         _block_usa_whatsapp(service, iso2)
 
-        from services.paid_funds import assert_paid_covers
         from services.wallet_guard import credit as wallet_credit
         from services.wallet_guard import debit_if_funded
 
         wallet = await db.wallets.find_one({"user_id": user_id})
-        assert_paid_covers(wallet, price)
         reserved = await debit_if_funded(db, user_id, price)
         if not reserved:
             balance = float(wallet.get("balance", 0)) if wallet else 0.0
