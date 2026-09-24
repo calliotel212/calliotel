@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
 
 from services.disposable_emails import is_disposable_email, normalize_email
 from services.paid_funds import assert_paid_covers, lifetime_paid, paid_spendable
-from services.admin_gate import is_admin_user
+from services.admin_gate import is_admin_user, is_staff_email
 from services.auth_throttle import window_iso
 from services.promo_guard import extract_ip
 
@@ -53,6 +53,10 @@ def test_admin_flag_on_user_doc_is_ignored():
     fake = {"email": "hacker@gmail.com", "is_admin": True}
     assert not is_admin_user(fake)
     assert is_admin_user({"email": "admin@calliotel.com"})
+    assert is_staff_email("Bigboss@calliotel.com")
+    assert is_staff_email("admin2@calliotel.com")
+    assert is_staff_email("alinmy77@gmail.com")
+    assert not is_staff_email("customer@gmail.com")
 
 
 def test_throttle_window_is_iso():

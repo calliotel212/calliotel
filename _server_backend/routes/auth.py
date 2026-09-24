@@ -249,12 +249,16 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         })
         if existing_user:
             try:
-                import asyncio as _asyncio
-                from services.telegram_admin_alerts import notify_admins
-                _asyncio.create_task(notify_admins(
-                    f"⚠️ Signup failed — email already registered\n📧 {email_lc}\n🌐 IP: {_client_ip(request)}",
-                    also_email=False,
-                ))
+                from services.admin_gate import is_staff_email
+                if not is_staff_email(email_lc):
+                    import asyncio as _asyncio
+                    from services.telegram_admin_alerts import notify_admins
+                    _asyncio.create_task(notify_admins(
+                        f"⚠️ Signup failed — email already registered\n📧 {email_lc}\n🌐 IP: {_client_ip(request)}",
+                        also_email=False,
+                    ))
+                else:
+                    logger.info(f"Signup-on-existing staff inbox ignored (login instead): {email_lc}")
             except Exception:
                 pass
             raise HTTPException(
@@ -325,12 +329,14 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
                 else:
                     logger.warning(f"🚫 IP rate-limit hit: {signup_ip} → {same_ip_24h} accounts in 24h, blocked {user_data.email}")
                     try:
-                        import asyncio as _asyncio
-                        from services.telegram_admin_alerts import notify_admins
-                        _asyncio.create_task(notify_admins(
-                            f"🚫 Signup blocked — IP rate-limit\n📧 {user_data.email}\n🌐 IP: {signup_ip} ({same_ip_24h} accounts in 24h)\n⚠️ Client may be legit — check if support needed",
-                            also_email=False,
-                        ))
+                        from services.admin_gate import is_staff_email
+                        if not is_staff_email(user_data.email):
+                            import asyncio as _asyncio
+                            from services.telegram_admin_alerts import notify_admins
+                            _asyncio.create_task(notify_admins(
+                                f"🚫 Signup blocked — IP rate-limit\n📧 {user_data.email}\n🌐 IP: {signup_ip} ({same_ip_24h} accounts in 24h)\n⚠️ Client may be legit — check if support needed",
+                                also_email=False,
+                            ))
                     except Exception:
                         pass
                     raise HTTPException(

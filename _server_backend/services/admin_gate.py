@@ -5,12 +5,23 @@ from fastapi import HTTPException
 
 ADMIN_EMAILS = frozenset({
     "admin@calliotel.com",
+    "admin2@calliotel.com",
     "bigboss@calliotel.com",
     "alinmy77@gmail.com",
     "worl212211@yahoo.com",
     "astor539@gmail.com",
     "g_agroup2@yahoo.com",
 })
+
+
+def is_staff_email(email: str | None) -> bool:
+    """Owner / staff inboxes — bots often try these on /signup."""
+    e = (email or "").strip().lower()
+    if not e or "@" not in e:
+        return False
+    if e in ADMIN_EMAILS:
+        return True
+    return e.endswith("@calliotel.com")
 
 
 def admin_email(user: dict | None) -> str:
