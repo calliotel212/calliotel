@@ -89,6 +89,13 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Telnyx webhook verify status check skipped: {e}")
 
+    # Reseller / developer programmatic API kill-switch status.
+    try:
+        from services.reseller_gate import log_reseller_gate_status
+        log_reseller_gate_status(logger)
+    except Exception as e:
+        logger.warning(f"⚠️ Reseller gate status check skipped: {e}")
+
     # Email blast retry scheduler (resumes after Resend daily quota reset)
     try:
         import asyncio as _asyncio
@@ -438,9 +445,16 @@ from routes import coop_stack
 from routes import spam_protection
 app.include_router(spam_protection.router, prefix="/api/spam", tags=["Spam Protection"])
 
-# Include Public API router
-from routes import public_api
-app.include_router(public_api.router, prefix="/api/public-api", tags=["Public API"])
+# Include Public API router — gated behind the reseller/developer kill-switch
+from services.reseller_gate import reseller_api_enabled as _reseller_api_enabled
+if _reseller_api_enabled():
+    try:
+        from routes import public_api
+        app.include_router(public_api.router, prefix="/api/public-api", tags=["Public API"])
+    except Exception as _e:
+        logger.error(f"Public API router not mounted: {_e}")
+else:
+    logger.info("🔒 Public API router skipped (RESELLER_API_ENABLED not set)")
 
 from routes import public_inventory
 app.include_router(public_inventory.router, prefix="/api/public/inventory", tags=["Public Inventory"])
@@ -476,14 +490,22 @@ app.include_router(premium_numbers.router, prefix="/api", tags=["Premium Numbers
 
 # Include credit packages router
 
-# Include reseller API router
-from routes import reseller_api
-
-app.include_router(reseller_api.router, prefix="/api", tags=["Reseller API"])
-
-from routes import reseller_v2
-
-app.include_router(reseller_v2.router, prefix="/api/reseller", tags=["Reseller V2 (White-Label)"])
+# Include reseller API routers — gated behind the reseller/developer kill-switch.
+# Disabled by default so nobody can self-register as a reseller / obtain a
+# reseller API key without an explicit RESELLER_API_ENABLED opt-in.
+if _reseller_api_enabled():
+    try:
+        from routes import reseller_api
+        app.include_router(reseller_api.router, prefix="/api", tags=["Reseller API"])
+    except Exception as _e:
+        logger.error(f"Reseller API router not mounted: {_e}")
+    try:
+        from routes import reseller_v2
+        app.include_router(reseller_v2.router, prefix="/api/reseller", tags=["Reseller V2 (White-Label)"])
+    except Exception as _e:
+        logger.error(f"Reseller V2 router not mounted: {_e}")
+else:
+    logger.info("🔒 Reseller API routers skipped (RESELLER_API_ENABLED not set)")
 
 from routes import credit_packages
 app.include_router(credit_packages.router, prefix="/api", tags=["Credit Packages"])
@@ -628,9 +650,17 @@ from routes import esim_webhook
 app.include_router(esim_webhook.router)
 
 # ── Calliotel Developer API ──────────────────────────────────────────────────
-from routes import api_keys
-app.include_router(api_keys.router, prefix="/api/developer", tags=["Developer — Key Management"])
-app.include_router(api_keys.v1, tags=["Developer — Public REST API v1"])
+# Gated behind the reseller/developer kill-switch: developer key management and
+# the public REST API v1 let outsiders consume services programmatically.
+if _reseller_api_enabled():
+    try:
+        from routes import api_keys
+        app.include_router(api_keys.router, prefix="/api/developer", tags=["Developer — Key Management"])
+        app.include_router(api_keys.v1, tags=["Developer — Public REST API v1"])
+    except Exception as _e:
+        logger.error(f"Developer API router not mounted: {_e}")
+else:
+    logger.info("🔒 Developer API router skipped (RESELLER_API_ENABLED not set)")
 
 
 # Add Error Filter Middleware FIRST (before CORS) to mask provider names
