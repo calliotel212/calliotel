@@ -80,6 +80,15 @@ async def lifespan(app: FastAPI):
     # Telnyx: no trunk assignment needed — voice + SMS are fully automatic.
     # (DIDWW trunk verification removed 2026-05-22 — provider replaced by Telnyx)
 
+    # Telnyx webhook verification readiness (fail-closed guard). Warn loudly if
+    # TELNYX_PUBLIC_KEY or PyNaCl is missing, since that rejects every Telnyx
+    # call webhook and breaks legitimate call billing.
+    try:
+        from services.telnyx_webhook_verify import log_config_status as _telnyx_verify_status
+        _telnyx_verify_status(logger)
+    except Exception as e:
+        logger.warning(f"⚠️ Telnyx webhook verify status check skipped: {e}")
+
     # Email blast retry scheduler (resumes after Resend daily quota reset)
     try:
         import asyncio as _asyncio
