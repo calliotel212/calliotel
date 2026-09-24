@@ -364,6 +364,9 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
             msg = f"Insufficient balance. This number costs ${total_due:.2f}/mo. Please add credits."
         raise HTTPException(status_code=402, detail=msg)
 
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, total_due)
+
     # ── 2b. Telnyx balance pre-flight check ──
     try:
         bal_data = await telnyx_get_balance()

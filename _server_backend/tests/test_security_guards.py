@@ -41,6 +41,45 @@ def test_promo_not_spendable_on_provider_products():
     assert_paid_covers(wallet, 1.0)
 
 
+class _FakeCursor:
+    def __init__(self, docs):
+        self._docs = docs
+
+    async def to_list(self, length=None):
+        return self._docs
+
+
+class _FakeTx:
+    def __init__(self, docs):
+        self._docs = docs
+
+    def find(self, *_a, **_k):
+        return _FakeCursor(self._docs)
+
+
+class _FakeDb:
+    def __init__(self, docs):
+        self.transactions = _FakeTx(docs)
+
+
+def test_welcome_credit_cannot_buy_number_on_legacy_wallet():
+    import asyncio
+    from services.paid_funds import assert_real_funds_cover, real_spendable
+
+    db = _FakeDb([{"type": "credit", "amount": 5.0, "description": "Promo code: WELCOME5 (organic)"}])
+    wallet = {"balance": 5.0}
+    assert asyncio.run(real_spendable(db, "u", wallet)) == 0.0
+    with pytest.raises(Exception) as exc:
+        asyncio.run(assert_real_funds_cover(db, "u", wallet, 1.99))
+    assert getattr(exc.value, "status_code", None) == 402
+
+    paid_db = _FakeDb([
+        {"type": "credit", "amount": 5.0, "description": "Promo code: WELCOME5"},
+        {"type": "credit", "amount": 10.0, "source": "stripe", "description": "Card payment — $10.00"},
+    ])
+    asyncio.run(assert_real_funds_cover(paid_db, "u", {"balance": 15.0}, 1.99))
+
+
 def test_extract_ip_uses_xff():
     class Req:
         headers = {"X-Forwarded-For": "203.0.113.9, 10.0.0.1"}
