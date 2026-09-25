@@ -902,3 +902,21 @@ async def serve_spa(request: Request, full_path: str):
         )
 
     raise HTTPException(status_code=404, detail="Frontend not built")
+
+
+# ── RESELLER_KILLSWITCH_MARKER — reseller/developer API kill-switch ──────────
+# Runs after every router is mounted. When RESELLER_API_ENABLED is unset, all
+# reseller/developer/public-api routes are removed so no outsider can obtain a
+# key or use the reseller API. Reversible: set RESELLER_API_ENABLED=1 + restart.
+try:
+    from services.reseller_gate import prune_reseller_routes as _prune_reseller_routes
+    from services.reseller_gate import log_reseller_gate_status as _log_reseller_gate_status
+    _removed_reseller_routes = _prune_reseller_routes(app)
+    _log_reseller_gate_status(logger)
+    if _removed_reseller_routes:
+        logger.info(
+            "🔒 Removed %d reseller/developer route(s): %s",
+            len(_removed_reseller_routes), _removed_reseller_routes,
+        )
+except Exception as _e:  # never let the kill-switch break startup
+    logger.error("Reseller kill-switch not applied: %s", _e)

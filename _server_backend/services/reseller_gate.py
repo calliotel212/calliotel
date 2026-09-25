@@ -26,10 +26,46 @@ logger = logging.getLogger(__name__)
 
 _TRUTHY = {"1", "true", "yes", "on", "enabled"}
 
+# Path prefixes owned by the reseller / developer programmatic surface. Any
+# mounted route at or under these is removed when the kill-switch is off.
+RESELLER_PATH_PREFIXES = (
+    "/api/reseller-api",
+    "/api/reseller",
+    "/api/developer",
+    "/api/public-api",
+)
+
 
 def reseller_api_enabled() -> bool:
     """True only when RESELLER_API_ENABLED is explicitly set to a truthy value."""
     return os.environ.get("RESELLER_API_ENABLED", "").strip().lower() in _TRUTHY
+
+
+def _is_reseller_path(path: str) -> bool:
+    p = path or ""
+    return any(p == pre or p.startswith(pre + "/") for pre in RESELLER_PATH_PREFIXES)
+
+
+def prune_reseller_routes(app) -> list[str]:
+    """Remove already-mounted reseller/developer routes when the switch is off.
+
+    Drift-proof: works regardless of how the routers were mounted, so it can be
+    applied on a production server whose server.py differs from this repo.
+    Returns the list of removed route paths (empty when enabled).
+    """
+    if reseller_api_enabled():
+        return []
+    removed: list[str] = []
+    kept = []
+    for route in list(getattr(app.router, "routes", [])):
+        path = getattr(route, "path", "") or ""
+        if _is_reseller_path(path):
+            removed.append(path)
+        else:
+            kept.append(route)
+    if removed:
+        app.router.routes[:] = kept
+    return removed
 
 
 def log_reseller_gate_status(log: logging.Logger | None = None) -> bool:

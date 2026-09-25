@@ -75,3 +75,68 @@ def test_reseller_endpoint_present_when_enabled(monkeypatch):
     r = client.post("/api/reseller-api/apply")
     assert r.status_code == 200
     assert r.json() == {"api_key": "live-key"}
+
+
+def _app_with_all_routes():
+    app = FastAPI()
+
+    @app.post("/api/reseller-api/apply")
+    def _apply():
+        return {"k": 1}
+
+    @app.get("/api/reseller/me")
+    def _me():
+        return {}
+
+    @app.get("/api/developer/keys")
+    def _keys():
+        return {}
+
+    @app.get("/api/public-api/anything")
+    def _pub():
+        return {}
+
+    # core customer routes that must survive
+    @app.get("/api/auth/me")
+    def _auth():
+        return {}
+
+    @app.get("/api/calls/rate")
+    def _calls():
+        return {}
+
+    @app.get("/api/referrals")
+    def _ref():
+        return {}
+
+    return app
+
+
+def test_prune_removes_only_reseller_routes_when_disabled(monkeypatch):
+    monkeypatch.delenv("RESELLER_API_ENABLED", raising=False)
+    gate = _fresh_gate()
+    app = _app_with_all_routes()
+    removed = gate.prune_reseller_routes(app)
+    assert set(removed) == {
+        "/api/reseller-api/apply",
+        "/api/reseller/me",
+        "/api/developer/keys",
+        "/api/public-api/anything",
+    }
+    client = TestClient(app)
+    # reseller/developer gone
+    assert client.post("/api/reseller-api/apply").status_code == 404
+    assert client.get("/api/developer/keys").status_code == 404
+    # core customer routes preserved (referrals must NOT be caught by /api/reseller)
+    assert client.get("/api/auth/me").status_code == 200
+    assert client.get("/api/calls/rate").status_code == 200
+    assert client.get("/api/referrals").status_code == 200
+
+
+def test_prune_noop_when_enabled(monkeypatch):
+    monkeypatch.setenv("RESELLER_API_ENABLED", "1")
+    gate = _fresh_gate()
+    app = _app_with_all_routes()
+    assert gate.prune_reseller_routes(app) == []
+    client = TestClient(app)
+    assert client.post("/api/reseller-api/apply").status_code == 200
