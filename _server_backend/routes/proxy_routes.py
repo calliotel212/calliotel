@@ -168,6 +168,10 @@ async def buy_proxy(body: BuyBody, current_user: dict = Depends(get_current_user
     from services.wallet_guard import debit_if_funded
 
     wallet = await db.wallets.find_one({"user_id": user_id})
+    # Provider inventory (dedicated proxy) must be paid with topped-up funds,
+    # not WELCOME5 / referral promo credit.
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, price)
     reserved = await debit_if_funded(db, user_id, price)
     if not reserved:
         balance = float(wallet.get("balance", 0)) if wallet else 0.0
