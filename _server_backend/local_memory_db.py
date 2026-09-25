@@ -84,7 +84,9 @@ class MemCollection:
     async def count_documents(self, query):
         return sum(1 for d in self.docs if _match(d, query))
 
-    def find(self, query=None, sort=None, limit=None, projection=None):
+    def find(self, query=None, projection=None, *, sort=None, limit=None):
+        # Motor-compatible: projection is the 2nd positional arg (and ignored
+        # here). sort/limit stay keyword-only for the few callers that use them.
         query = query or {}
         matched = [dict(d) for d in self.docs if _match(d, query)]
         return MemCursor(matched, sort=sort, limit=limit)
