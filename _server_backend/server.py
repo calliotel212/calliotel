@@ -445,8 +445,15 @@ from routes import coop_stack
 from routes import spam_protection
 app.include_router(spam_protection.router, prefix="/api/spam", tags=["Spam Protection"])
 
-# Include Public API router — gated behind the reseller/developer kill-switch
-from services.reseller_gate import reseller_api_enabled as _reseller_api_enabled
+# Include Public API router — gated behind the reseller/developer kill-switch.
+# Import defensively: a missing/broken reseller_gate module must never take down
+# the whole backend (signup, login, purchases). Default to disabled (secure).
+try:
+    from services.reseller_gate import reseller_api_enabled as _reseller_api_enabled
+except Exception as _e:
+    logger.error(f"reseller_gate import failed — keeping reseller API disabled: {_e}")
+    def _reseller_api_enabled():
+        return False
 if _reseller_api_enabled():
     try:
         from routes import public_api
