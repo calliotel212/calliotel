@@ -1,27 +1,28 @@
 import Link from "next/link";
+import { NightEntrance } from "@/components/night-entrance";
 
 export default async function HomePage({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
   return (
-    <main>
+    <main className="home">
       {deleted === "1" ? (
         <p className="banner" role="status">
           Your account was deleted.
         </p>
       ) : null}
-      <section className="hero">
+      <section className="hero night">
         <div className="hero-copy">
           <p className="eyebrow">
             <span className="gold-dot" aria-hidden="true" />
-            Vertical stories
+            Movie night
           </p>
           <h1>
-            One minute.
+            Let the
             <br />
-            Then the next.
+            room go.
           </h1>
           <p className="lede">
-            dramame is a home for vertical short-story series. Each episode runs 1:00–1:30. A full story is 60–75 episodes, about an hour to an hour and a half. Finish one, it unlocks, and you scroll up into the next.
+            The theater is the phone. Its screen is already glowing, and the rest of the room can wait. dramame is a vertical short-story series: each episode runs 1:00–1:30, a story is 60–75 episodes, and when one ends you scroll up into the next.
           </p>
           <div className="hero-actions">
             <Link className="button button-primary" href="/signup">
@@ -32,15 +33,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
             </Link>
           </div>
         </div>
-        <figure className="phone">
-          <div className="phone-screen" aria-hidden="true">
-            <span className="badge">Preview</span>
-            <p className="phone-kicker">Player frame</p>
-            <p className="phone-title">Placeholder card</p>
-            <div className="phone-bar" />
-          </div>
-          <figcaption>Player preview. Not a finished series, and nothing is streaming yet.</figcaption>
-        </figure>
+        <NightEntrance />
       </section>
       <dl className="facts">
         <div>

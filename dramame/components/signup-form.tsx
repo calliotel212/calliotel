@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { signup } from "@/lib/actions/auth";
 import { DevNotice } from "@/components/dev-notice";
+import { PopcornLoader } from "@/components/popcorn-loader";
 import { PasswordField } from "@/components/password-field";
 import { SocialButtons } from "@/components/social-buttons";
 import { initialFormState } from "@/lib/form-state";
@@ -37,8 +38,8 @@ export function SignupForm({ flags }: { flags: SocialFlags }) {
         </label>
         {state.fieldErrors.terms ? <p id="terms-error" className="field-error" role="alert">{state.fieldErrors.terms}</p> : null}
       </div>
-      <button className="button button-primary" type="submit" disabled={pending} aria-busy={pending}>
-        {pending ? "Please wait…" : "Create account"}
+      <button className={pending ? "button button-primary is-loading" : "button button-primary"} type="submit" disabled={pending} aria-busy={pending}>
+        {pending ? <PopcornLoader size="sm" label="Creating your account" /> : "Create account"}
       </button>
       <p className="form-links">
         <Link href="/login">Already have an account? Log in</Link>
