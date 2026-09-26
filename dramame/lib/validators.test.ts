@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup } from "./validators.ts";
+import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup, validateSuggestion } from "./validators.ts";
 
 test("email validation covers empty and invalid", () => {
   assert.equal(validateEmail(""), "Enter your email.");
@@ -34,6 +34,12 @@ test("login flags empty password", () => {
   const errors = validateLogin({ email: "a@b.co", password: "" });
   assert.equal(errors.password, "Enter a password.");
   assert.equal(errors.email, undefined);
+});
+
+test("suggestion email is optional", () => {
+  assert.deepEqual(validateSuggestion({ idea: "A lighthouse keeper who loses one minute every night.", email: "" }), {});
+  assert.equal(validateSuggestion({ idea: "too short", email: "" }).idea, "Use at least 10 characters.");
+  assert.ok(validateSuggestion({ idea: "A lighthouse keeper who loses one minute every night.", email: "nope" }).email);
 });
 
 test("safeNextPath blocks off-site redirects", () => {

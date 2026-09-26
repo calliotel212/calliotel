@@ -74,6 +74,20 @@ export function validateContact(input: { name: string; email: string; message: s
   return fieldErrors;
 }
 
+export function validateSuggestion(input: { idea: string; email: string }): FieldErrors {
+  const fieldErrors: FieldErrors = {};
+  const idea = input.idea.trim();
+  if (!idea) fieldErrors.idea = "Enter a story idea.";
+  else if (idea.length < 10) fieldErrors.idea = "Use at least 10 characters.";
+  else if (idea.length > 2000) fieldErrors.idea = "Use 2000 characters or fewer.";
+  const email = input.email.trim();
+  if (email) {
+    const emailError = validateEmail(email);
+    if (emailError) fieldErrors.email = emailError;
+  }
+  return fieldErrors;
+}
+
 export function safeNextPath(value: string | null | undefined, fallback = "/account"): string {
   if (!value) return fallback;
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;

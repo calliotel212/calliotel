@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { logout } from "@/lib/actions/auth";
 
 const LINKS = [
-  { href: "/library", label: "Library" },
-  { href: "/search", label: "Search" },
-  { href: "/series/preview", label: "Scroll preview" },
-  { href: "/help", label: "Help" },
+  { href: "/", label: "Home" },
+  { href: "/genres", label: "Genres" },
+  { href: "/how-it-works", label: "How it works" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/faq", label: "FAQ" },
 ];
 
 export function SiteNav({ isAuthed }: { isAuthed: boolean }) {
@@ -59,9 +60,9 @@ export function SiteNav({ isAuthed }: { isAuthed: boolean }) {
       ) : (
         <>
           <Link href="/login" className={itemClass("/login")}>
-            Log in
+            Sign in
           </Link>
-          <Link href="/signup" className="button button-primary button-small">
+          <Link href="/signup" className="button button-ghost button-small">
             Sign up
           </Link>
         </>

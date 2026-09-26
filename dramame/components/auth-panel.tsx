@@ -4,7 +4,7 @@ export function AuthPanel({ title, lede, children }: { title: string; lede: stri
   return (
     <div className="auth-split">
       <aside className="auth-poster">
-        <p className="eyebrow">dramame</p>
+        <p className="eyebrow">Drama Me</p>
         <p className="poster-line">One minute, then scroll up.</p>
       </aside>
       <div className="auth-panel">
