@@ -185,46 +185,207 @@ p { margin: 0 0 0.8rem; }
 
 .hero {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
-  gap: 3rem;
-  align-items: end;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 2.5rem;
+  align-items: center;
   width: min(var(--page), calc(100% - 2.5rem));
   margin: 0 auto;
-  padding: 3.5rem 0 2rem;
+  padding: 3.2rem 0 2rem;
 }
+
+.hero.night { position: relative; }
+
+.hero.night::before {
+  content: "";
+  position: absolute;
+  right: -6%;
+  top: 4%;
+  width: min(540px, 70vw);
+  height: 560px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 55%, color-mix(in srgb, var(--highlight-gold) 16%, transparent), transparent 42%),
+    radial-gradient(circle at 48% 40%, color-mix(in srgb, var(--glow-indigo) 42%, transparent), transparent 62%);
+  filter: blur(6px);
+}
+
+.hero-copy { position: relative; z-index: 1; }
 
 .hero-actions, .cookie-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 1.2rem; }
 
-.phone { margin: 0; }
+.entrance {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  min-height: 560px;
+}
+
+.phone-door { width: min(100%, 270px); margin-left: auto; margin-right: 1.5rem; }
 
 .phone-screen {
   position: relative;
-  aspect-ratio: 9 / 16;
-  max-height: 540px;
-  border: 1px solid color-mix(in srgb, var(--text) 24%, transparent);
-  border-radius: 1.4rem;
+  aspect-ratio: 9 / 17;
+  max-height: 520px;
+  border-radius: 1.7rem;
   overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--highlight-gold) 42%, transparent);
   background:
-    linear-gradient(180deg, transparent 0%, var(--background) 78%),
-    linear-gradient(160deg, #161433 0%, var(--glow-indigo) 42%, var(--brand-violet) 70%, #1a1020 100%);
-  box-shadow: 0 30px 80px color-mix(in srgb, var(--glow-indigo) 25%, transparent);
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+    radial-gradient(circle at 50% 46%, color-mix(in srgb, var(--text) 22%, var(--glow-indigo)), var(--brand-violet) 34%, var(--background) 76%);
+  box-shadow:
+    0 0 0 9px color-mix(in srgb, var(--background) 78%, black),
+    0 0 90px color-mix(in srgb, var(--glow-indigo) 58%, transparent),
+    0 28px 40px color-mix(in srgb, var(--highlight-gold) 14%, transparent);
 }
 
-.phone-kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 0.75rem; color: var(--text-muted); }
-
-.phone-title { font-size: 2rem; margin: 0.2rem 0 1rem; }
-
-.phone-bar {
-  height: 3px;
-  width: 42%;
-  background: var(--cta-coral);
+.door-glow {
+  position: absolute;
+  inset: 16% 20% 18%;
+  border-radius: 1.1rem;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--text) 70%, var(--glow-indigo)), color-mix(in srgb, var(--glow-indigo) 35%, transparent) 70%);
+  box-shadow: 0 0 48px color-mix(in srgb, var(--glow-indigo) 80%, transparent);
 }
 
-.phone figcaption { margin-top: 0.8rem; color: var(--text-muted); font-size: 0.95rem; }
+.phone-floor {
+  height: 22px;
+  width: 78%;
+  margin: 0.85rem auto 0;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--highlight-gold) 42%, transparent), transparent 72%);
+  filter: blur(1px);
+}
+
+.ticket {
+  position: absolute;
+  top: 8%;
+  right: 0;
+  z-index: 2;
+  width: 7rem;
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem 0.65rem;
+  color: var(--highlight-gold);
+  background: color-mix(in srgb, var(--background) 78%, var(--brand-violet));
+  border: 1px dashed color-mix(in srgb, var(--highlight-gold) 75%, transparent);
+  transform: rotate(9deg);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ticket-rule { height: 1px; background: color-mix(in srgb, var(--highlight-gold) 55%, transparent); }
+
+.bucket {
+  position: absolute;
+  left: 0;
+  bottom: 3.2rem;
+  width: 92px;
+  height: auto;
+  z-index: 2;
+  filter: drop-shadow(0 10px 16px color-mix(in srgb, var(--background) 80%, black));
+}
+
+.loose-kernel {
+  position: absolute;
+  z-index: 2;
+  width: 0.48rem;
+  height: 0.55rem;
+  border-radius: 55% 45% 48% 52%;
+  background: radial-gradient(circle at 32% 30%, var(--text), var(--highlight-gold) 58%, color-mix(in srgb, var(--highlight-gold) 45%, var(--background)));
+}
+
+.loose-a { left: 18%; bottom: 2.4rem; transform: rotate(-18deg); }
+.loose-b { left: 28%; bottom: 1.7rem; width: 0.36rem; height: 0.42rem; transform: rotate(24deg); }
+
+.entrance figcaption { margin: 0.9rem 0 0; color: var(--text-muted); font-size: 0.95rem; max-width: 22rem; margin-left: auto; }
+
+.button.is-loading {
+  background: var(--background);
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--highlight-gold) 55%, transparent);
+  opacity: 1;
+  min-width: 9.5rem;
+}
+
+.loader-pad {
+  display: inline-flex;
+  padding: 0.45rem 0.7rem;
+  background: color-mix(in srgb, var(--background) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--highlight-gold) 40%, transparent);
+}
+
+.loader-page {
+  min-height: 46vh;
+  display: grid;
+  place-items: center;
+  padding: 4rem 1rem;
+}
+
+.loader-page-fill { min-height: 100dvh; background: var(--background); }
+
+.popcorn-loader {
+  --loader: 2.75rem;
+  --kernel: 0.62rem;
+  --radius: 0.78rem;
+  display: inline-grid;
+  width: var(--loader);
+  height: var(--loader);
+  place-items: center;
+}
+
+.popcorn-loader.is-sm { --loader: 1.7rem; --kernel: 0.44rem; --radius: 0.5rem; }
+.popcorn-loader.is-lg { --loader: 5.6rem; --kernel: 1.2rem; --radius: 1.55rem; }
+
+.orbit {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation: kernel-orbit 3.2s linear infinite;
+}
+
+.kernel {
+  position: absolute;
+  width: var(--kernel);
+  height: calc(var(--kernel) * 1.12);
+  border-radius: 63% 37% 58% 42% / 46% 62% 38% 54%;
+  background:
+    radial-gradient(circle at 30% 26%, var(--text) 0 18%, transparent 42%),
+    radial-gradient(circle at 68% 72%, color-mix(in srgb, var(--highlight-gold) 35%, var(--background)), transparent 55%),
+    var(--highlight-gold);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--highlight-gold) 70%, var(--background));
+  transform: translate(-50%, -50%);
+  animation: kernel-upright 3.2s linear infinite;
+}
+
+.kernel-a {
+  left: 50%;
+  top: calc(50% - var(--radius));
+}
+
+.kernel-b {
+  left: calc(50% + var(--radius) * 0.866);
+  top: calc(50% + var(--radius) * 0.5);
+  width: calc(var(--kernel) * 0.86);
+  height: calc(var(--kernel) * 1.02);
+  border-radius: 42% 58% 48% 52% / 60% 40% 55% 45%;
+}
+
+.kernel-c {
+  left: calc(50% - var(--radius) * 0.866);
+  top: calc(50% + var(--radius) * 0.5);
+  width: calc(var(--kernel) * 0.92);
+  height: calc(var(--kernel) * 0.95);
+  border-radius: 55% 45% 38% 62% / 42% 58% 50% 50%;
+}
+
+@keyframes kernel-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes kernel-upright {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(-360deg); }
+}
 
 .badge {
   display: inline-flex;
@@ -546,7 +707,13 @@ textarea { min-height: 8rem; resize: vertical; }
   .nav-mobile nav { flex-direction: column; align-items: flex-start; padding: 0.4rem 0; }
   .site-header { position: sticky; }
   .cookie-banner { flex-direction: column; align-items: stretch; }
+  .hero { padding-top: 1.2rem; padding-bottom: 1rem; }
+  .entrance { min-height: 0; margin-top: 0.2rem; }
+  .phone-door { margin-right: auto; margin-left: auto; width: min(100%, 196px); }
   .phone-screen { max-height: 420px; }
+  .ticket { right: 8%; top: 0; }
+  .bucket { left: 8%; bottom: 4.5rem; width: 76px; }
+  .entrance figcaption { margin-left: auto; margin-right: auto; text-align: center; }
   .watch-bar { align-items: flex-start; flex-wrap: wrap; }
   .provider-list li { align-items: flex-start; flex-direction: column; }
 }

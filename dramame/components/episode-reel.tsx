@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { savePreviewProgress } from "@/lib/actions/progress";
+import { PopcornLoader } from "@/components/popcorn-loader";
 import { PREVIEW_EPISODES } from "@/lib/episodes";
 import { isEpisodeUnlocked } from "@/lib/unlock";
 
@@ -26,6 +27,7 @@ export function EpisodeReel({ initialHighest }: { initialHighest: number }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stored = useSyncExternalStore(subscribe, readStored, () => 0);
   const highest = Math.max(initialHighest, stored);
+  const [opening, setOpening] = useState<number | null>(null);
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -33,12 +35,17 @@ export function EpisodeReel({ initialHighest }: { initialHighest: number }) {
     el.scrollTop = el.scrollHeight;
   }, []);
 
-  function openEpisode(episodeNumber: number) {
-    if (!isEpisodeUnlocked(episodeNumber, highest)) return;
-    const next = Math.max(highest, episodeNumber);
-    localStorage.setItem(STORAGE_KEY, String(next));
-    emit();
-    void savePreviewProgress(next);
+  async function openEpisode(episodeNumber: number) {
+    if (opening !== null || !isEpisodeUnlocked(episodeNumber, highest)) return;
+    setOpening(episodeNumber);
+    try {
+      await savePreviewProgress(episodeNumber);
+    } finally {
+      await new Promise((resolve) => setTimeout(resolve, 900));
+      localStorage.setItem(STORAGE_KEY, String(Math.max(highest, episodeNumber)));
+      emit();
+      setOpening(null);
+    }
   }
 
   const ordered = [...PREVIEW_EPISODES].reverse();
@@ -66,8 +73,13 @@ export function EpisodeReel({ initialHighest }: { initialHighest: number }) {
                 {unlocked && opened ? (
                   <p>{episode.number === PREVIEW_EPISODES.length ? "End of this preview." : nextUnlocked ? "Opened. Scroll up for the next episode." : "Opened."}</p>
                 ) : null}
-                {unlocked && !opened ? (
-                  <button type="button" className="button button-primary" onClick={() => openEpisode(episode.number)}>
+                {unlocked && !opened && opening === episode.number ? (
+                  <span className="loader-pad">
+                    <PopcornLoader size="lg" label="Opening episode" />
+                  </span>
+                ) : null}
+                {unlocked && !opened && opening !== episode.number ? (
+                  <button type="button" className="button button-primary" onClick={() => openEpisode(episode.number)} disabled={opening !== null}>
                     Open episode
                   </button>
                 ) : null}
