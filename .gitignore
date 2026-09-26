@@ -23,6 +23,9 @@ node_modules/
 *.key
 credentials.json
 
+# dramame local database (Next app in /dramame)
+dramame/data/
+
 # bulky / not the product
 _live_snap/
 _play_release/
