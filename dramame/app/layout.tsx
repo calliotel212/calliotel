@@ -17,12 +17,12 @@ const sans = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.AUTH_URL?.trim() || "http://localhost:3000"),
   title: {
-    default: "dramame",
-    template: "%s · dramame",
+    default: "Drama Me",
+    template: "%s · Drama Me",
   },
   description:
-    "Vertical short-story series. Each episode is 1:00–1:30. A story is 60–75 episodes. Finish one, then scroll up into the next.",
-  applicationName: "dramame",
+    "AI cinematic short-story series on dramame.net. Each episode is 1:00–1:30. A story is 60–75 episodes. Finish one, then scroll up into the next.",
+  applicationName: "Drama Me",
 };
 
 export const viewport: Viewport = {

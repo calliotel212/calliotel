@@ -20,7 +20,7 @@ export default async function PreviewPage() {
       </a>
       <header className="watch-bar">
         <Link href="/" className="wordmark">
-          dramame
+          Drama Me
         </Link>
         <p>Preview only. Placeholder cards, not a finished series.</p>
         <Link href="/">Close</Link>

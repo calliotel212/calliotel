@@ -289,6 +289,13 @@ export function saveMessage(input: { name: string; email: string; message: strin
     .run(randomUUID(), input.name.trim(), input.email.trim().toLowerCase(), input.message.trim(), Date.now());
 }
 
+export function saveSuggestion(input: { idea: string; email: string }) {
+  const email = input.email.trim().toLowerCase();
+  getDb()
+    .prepare("INSERT INTO suggestions (id, idea, email, created_at) VALUES (?, ?, ?, ?)")
+    .run(randomUUID(), input.idea.trim(), email || null, Date.now());
+}
+
 export function getProgress(userId: string, seriesId: string): number {
   const row = getDb()
     .prepare("SELECT highest_opened FROM progress WHERE user_id = ? AND series_id = ?")

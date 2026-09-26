@@ -54,6 +54,13 @@ function migrate(db: DatabaseSync) {
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id TEXT PRIMARY KEY,
+      idea TEXT NOT NULL,
+      email TEXT,
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS dev_links (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
@@ -75,8 +82,8 @@ export function getDb(): DatabaseSync {
     const db = new DatabaseSync(path.join(dir, "dramame.db"));
     db.exec("PRAGMA journal_mode = WAL");
     db.exec("PRAGMA foreign_keys = ON");
-    migrate(db);
     globalForDb.__dramameDb = db;
   }
+  migrate(globalForDb.__dramameDb);
   return globalForDb.__dramameDb;
 }
