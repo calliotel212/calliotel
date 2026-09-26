@@ -283,6 +283,9 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
     Purchase a virtual number via Telnyx.
     Deducts from user wallet on success.
     """
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
+
     from services.user_approval import user_requires_approval
     if user_requires_approval(current_user):
         raise HTTPException(
@@ -347,6 +350,9 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
     plan_label = f"{req.months}-month plan" if req.months > 1 else "monthly plan"
 
     # ── 2. Wallet check ──
+    from services.wallet_guard import credit as wallet_credit
+    from services.wallet_guard import debit_if_funded
+
     wallet = await db.wallets.find_one({"user_id": user_id})
     balance = float(wallet.get("balance", 0)) if wallet else 0.0
 
@@ -360,6 +366,9 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
         else:
             msg = f"Insufficient balance. This number costs ${total_due:.2f}/mo. Please add credits."
         raise HTTPException(status_code=402, detail=msg)
+
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, total_due)
 
     # ── 2b. Telnyx balance pre-flight check ──
     try:
@@ -402,6 +411,14 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
             ),
         )
 
+    reserved = await debit_if_funded(db, user_id, total_due)
+    if not reserved:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Insufficient balance. This number costs ${total_due:.2f}. Please add credits.",
+        )
+    balance = float(reserved.get("balance", 0))
+
     # ── 3. Purchase from Telnyx ──
     try:
         from services.telnyx_client import CALLIOTEL_MESSAGING_PROFILE_ID
@@ -437,21 +454,17 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
             pass
 
     except HTTPException:
+        await wallet_credit(db, user_id, total_due)
         raise
     except Exception as e:
+        await wallet_credit(db, user_id, total_due)
         logger.error(f"❌ Telnyx purchase error: {e}")
         raise HTTPException(
             status_code=502,
             detail="Number purchase failed. Please try again or contact support.",
         )
 
-    # ── 4. Deduct wallet ──
-    new_balance = balance - total_due
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$set": {"balance": new_balance, "updated_at": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
-    )
+    new_balance = round(float(balance), 2)
 
     # ── 5. Record subscription ──
     now = datetime.now(timezone.utc)
@@ -545,8 +558,8 @@ async def auto_purchase(req: PurchaseRequest, current_user=Depends(get_current_u
 @router.get("/balance")
 async def get_telnyx_balance(current_user=Depends(get_current_user)):
     """Admin: get Telnyx provider account balance."""
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
     try:
         return await telnyx_get_balance()
     except Exception as e:
@@ -558,12 +571,8 @@ async def get_telnyx_balance(current_user=Depends(get_current_user)):
 @router.get("/admin/pricing")
 async def admin_pricing(current_user: dict = Depends(get_current_user)):
     """Admin: pricing breakdown per country."""
-    ADMIN_EMAILS = {
-        "admin@calliotel.com", "bigboss@calliotel.com", "alinmy77@gmail.com",
-        "worl212211@yahoo.com", "astor539@gmail.com",
-    }
-    if (current_user.get("email") or current_user.get("_id")) not in ADMIN_EMAILS:
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
 
     sample_countries = ["US", "GB", "CA", "AU", "BR", "MX", "NG", "SG", "PH", "PR"]
     results = []
@@ -616,13 +625,8 @@ async def cleanup_dead_numbers(
     Admin: find numbers in Telnyx account that have status != active,
     release them and mark DB records as expired.
     """
-    ADMIN_EMAILS = {
-        "admin@calliotel.com", "bigboss@calliotel.com", "alinmy77@gmail.com",
-        "worl212211@yahoo.com", "astor539@gmail.com",
-    }
-    user_ident = current_user.get("email") or current_user.get("_id")
-    if not current_user.get("is_admin") and user_ident not in ADMIN_EMAILS:
-        raise HTTPException(status_code=403, detail="Admin only")
+    from services.admin_gate import require_admin_user
+    require_admin_user(current_user)
 
     all_numbers = await list_my_numbers()
     dead = [n for n in all_numbers if n.get("status") not in ("active", "port-in-started")]

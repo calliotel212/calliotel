@@ -96,6 +96,11 @@ async def ensure_indexes(db=None) -> dict:
         ("user_settings", [("user_id", 1)], {"unique": True}, "user_settings.user_id"),
         ("active_calls", [("user_id", 1)], {}, "active_calls.user_id"),
         # wallet / payments
+        ("auth_throttle", [("kind", 1), ("ip", 1), ("created_at", -1)], {}, "auth_throttle.ip"),
+        ("auth_throttle", [("kind", 1), ("identity", 1), ("created_at", -1)], {}, "auth_throttle.identity"),
+        ("wallets", [("user_id", 1)], {}, "wallets.user_id"),
+        ("promo_redemptions", [("ip", 1), ("created_at", -1)], {}, "promo_redemptions.ip_created"),
+        ("promo_redemptions", [("user_id", 1), ("code", 1)], {}, "promo_redemptions.user_code"),
         ("transactions", [("user_id", 1), ("created_at", -1)], {}, "transactions.user_created"),
         ("transactions", [("call_control_id", 1)], {"sparse": True}, "transactions.call_control_id"),
         ("payment_transactions", [("user_id", 1), ("created_at", -1)], {}, "payment_transactions.user_created"),

@@ -14,6 +14,7 @@ import {
 import isIosAppShell from '../utils/isIosAppShell';
 import TelegramMiniAppContinue from '../components/TelegramMiniAppContinue';
 import { isTelegramMiniApp } from '../utils/telegramMiniApp';
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from '../components/TurnstileWidget';
 
 // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -27,6 +28,7 @@ const SignupPage = () => {
   const [referralCode, setReferralCode] = useState('');
   const termsAccepted = true; // implied by proceeding — shown as notice below
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const { signup } = useAuth();
   const { darkMode } = useTheme();
   const navigate = useNavigate();
@@ -171,7 +173,7 @@ const SignupPage = () => {
     setFormError(null);
     setEmailExists(false);
 
-    const result = await signup(email, password, fullName, birthday, referralCode, termsAccepted);
+    const result = await signup(email, password, fullName, birthday, referralCode, termsAccepted, turnstileToken);
     
     if (result.success) {
       if (promoCode && promoValid) {
@@ -454,10 +456,11 @@ const SignupPage = () => {
             )}
           </div>
 
+          <TurnstileWidget onToken={setTurnstileToken} />
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
             className="w-full py-3 bg-ember text-black font-bold rounded-lg hover:bg-ember-light transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(245,166,35,0.4)] hover:shadow-[0_0_30px_rgba(245,166,35,0.6)] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center space-x-2"
           >
             {loading ? (

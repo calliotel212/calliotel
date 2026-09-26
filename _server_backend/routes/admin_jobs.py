@@ -23,9 +23,8 @@ def _scheduler():
 
 
 async def require_admin(current_user=Depends(get_current_user)):
-    if not current_user.get("is_admin"):
-        raise HTTPException(status_code=403, detail="Admin only")
-    return current_user
+    from services.admin_gate import require_admin_user
+    return require_admin_user(current_user)
 
 
 @router.get("/status")

@@ -55,6 +55,7 @@ class UserSignup(BaseModel):
     utm_term: Optional[str] = None
     landing_page: Optional[str] = None
     referrer: Optional[str] = None
+    turnstile_token: Optional[str] = None
     
     @validator('password')
     def password_strength(cls, v):
@@ -87,6 +88,7 @@ class UserSignup(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    totp_code: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str
@@ -105,6 +107,7 @@ class UserResponse(BaseModel):
     parent_reseller_id: Optional[str] = None
     is_vip: Optional[bool] = False
     vip_since: Optional[str] = None
+    email_confirmation_required: Optional[bool] = False
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
@@ -205,6 +208,11 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         user = await db.users.find_one({"_id": user_id})
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
+        if user.get("banned"):
+            raise HTTPException(
+                status_code=403,
+                detail="This account has been suspended. Contact support@calliotel.com if you believe this is an error.",
+            )
         return user
     except HTTPException:
         raise
@@ -223,6 +231,9 @@ def _client_ip(request: Request) -> str:
 @router.post("/signup", response_model=TokenResponse)
 async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, request: Request):
     try:
+        from services.turnstile import assert_human
+        await assert_human(user_data.turnstile_token, _client_ip(request))
+
         # Block disposable / temp-mail signups (saves ad spend on fake accounts)
         from services.disposable_emails import is_disposable_email, normalize_email
         if is_disposable_email(user_data.email):
@@ -243,12 +254,16 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         })
         if existing_user:
             try:
-                import asyncio as _asyncio
-                from services.telegram_admin_alerts import notify_admins
-                _asyncio.create_task(notify_admins(
-                    f"⚠️ Signup failed — email already registered\n📧 {email_lc}\n🌐 IP: {_client_ip(request)}",
-                    also_email=False,
-                ))
+                from services.admin_gate import is_staff_email
+                if not is_staff_email(email_lc):
+                    import asyncio as _asyncio
+                    from services.telegram_admin_alerts import notify_admins
+                    _asyncio.create_task(notify_admins(
+                        f"⚠️ Signup failed — email already registered\n📧 {email_lc}\n🌐 IP: {_client_ip(request)}",
+                        also_email=False,
+                    ))
+                else:
+                    logger.info(f"Signup-on-existing staff inbox ignored (login instead): {email_lc}")
             except Exception:
                 pass
             raise HTTPException(
@@ -319,12 +334,14 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
                 else:
                     logger.warning(f"🚫 IP rate-limit hit: {signup_ip} → {same_ip_24h} accounts in 24h, blocked {user_data.email}")
                     try:
-                        import asyncio as _asyncio
-                        from services.telegram_admin_alerts import notify_admins
-                        _asyncio.create_task(notify_admins(
-                            f"🚫 Signup blocked — IP rate-limit\n📧 {user_data.email}\n🌐 IP: {signup_ip} ({same_ip_24h} accounts in 24h)\n⚠️ Client may be legit — check if support needed",
-                            also_email=False,
-                        ))
+                        from services.admin_gate import is_staff_email
+                        if not is_staff_email(user_data.email):
+                            import asyncio as _asyncio
+                            from services.telegram_admin_alerts import notify_admins
+                            _asyncio.create_task(notify_admins(
+                                f"🚫 Signup blocked — IP rate-limit\n📧 {user_data.email}\n🌐 IP: {signup_ip} ({same_ip_24h} accounts in 24h)\n⚠️ Client may be legit — check if support needed",
+                                also_email=False,
+                            ))
                     except Exception:
                         pass
                     raise HTTPException(
@@ -351,7 +368,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
             "birthday": user_data.birthday,
             "client_id": client_id,
             "auth_provider": "email",
-            "email_verified": True,  # Auto-verified — no email gate
+            "email_verified": False,  # spending is gated until the emailed link is clicked
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "signup_ip": signup_ip,
@@ -402,7 +419,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         
         # Store verification token
         await db.verification_tokens.insert_one({
-            "email": user_data.email,
+            "email": email_lc,
             "token": verification_token,
             "expires_at": expires_at,
             "created_at": datetime.now(timezone.utc)
@@ -411,7 +428,7 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
         # Send email in background
         background_tasks.add_task(
             send_verification_email,
-            user_data.email,
+            email_lc,
             verification_token,
             user_data.full_name or "User"
         )
@@ -447,9 +464,10 @@ async def signup(user_data: UserSignup, background_tasks: BackgroundTasks, reque
                 email=user_data.email,
                 full_name=user_data.full_name,
                 created_at=user_doc["created_at"],
-                email_verified=True,
+                email_verified=False,
                 client_id=client_id,
                 balance=new_balance,
+                email_confirmation_required=True,
             ),
             is_new_user=True,
         )
@@ -665,9 +683,13 @@ async def google_auth(data: GoogleAuthRequest):
         raise HTTPException(status_code=500, detail="Google sign-in failed")
 
 @router.post("/login", response_model=TokenResponse)
-async def login(user_data: UserLogin):
+async def login(user_data: UserLogin, request: Request):
     try:
+        from services.auth_throttle import assert_not_throttled, record_attempt
+        ip = _client_ip(request)
         email_key = user_data.email.strip().lower()
+        await assert_not_throttled(db, kind="login", ip=ip, identity=email_key, limit=10, window_minutes=15)
+        await record_attempt(db, kind="login", ip=ip, identity=email_key)
         # Indexed equality lookup (avoid $regex COLLSCAN)
         user = await db.users.find_one({"email": email_key})
         if not user:
@@ -682,8 +704,7 @@ async def login(user_data: UserLogin):
                 user = await db.users.find_one({"email_normalized": norm})
         if not user:
             raise HTTPException(status_code=404, detail="No account found with this email.")
-        
-        if not verify_password(user_data.password, user["password"]):
+        if not user.get("password") or not verify_password(user_data.password, user["password"]):
             raise HTTPException(status_code=401, detail="Incorrect password.")
 
         # Banned account check
@@ -693,6 +714,23 @@ async def login(user_data: UserLogin):
                 status_code=403,
                 detail="This account has been suspended. Contact support@calliotel.com if you believe this is an error."
             )
+
+        if user.get("two_factor_enabled"):
+            code = (user_data.totp_code or "").strip()
+            if not code:
+                raise HTTPException(status_code=401, detail="Two-factor code required.")
+            secret = user.get("totp_secret")
+            ok = False
+            if secret:
+                ok = pyotp.TOTP(secret).verify(code, valid_window=1)
+            if not ok and code.upper() in (user.get("backup_codes") or []):
+                ok = True
+                await db.users.update_one(
+                    {"_id": user["_id"]},
+                    {"$pull": {"backup_codes": code.upper()}},
+                )
+            if not ok:
+                raise HTTPException(status_code=401, detail="Invalid two-factor code.")
 
         # Generate client_id for existing users who don't have one
         if "client_id" not in user:
@@ -810,6 +848,11 @@ async def resend_verification(request: ResendVerificationRequest):
         logger.error(f"Resend verification error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to resend verification")
 
+def _needs_email_confirmation(user: dict) -> bool:
+    from services.email_gate import needs_email_confirmation
+    return needs_email_confirmation(user)
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user = Depends(get_current_user)):
     return UserResponse(
@@ -829,6 +872,7 @@ async def get_me(current_user = Depends(get_current_user)):
         parent_reseller_id=current_user.get("parent_reseller_id"),
         is_vip=bool(current_user.get("is_vip")),
         vip_since=(current_user.get("vip_since").isoformat() if hasattr(current_user.get("vip_since"), "isoformat") else current_user.get("vip_since")),
+        email_confirmation_required=_needs_email_confirmation(current_user),
     )
 
 @router.put("/me")

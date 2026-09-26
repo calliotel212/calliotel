@@ -89,7 +89,13 @@ DISPOSABLE_DOMAINS: frozenset[str] = frozenset({
     "cuvox.de", "dayrep.com", "einrot.com", "fleckens.hu",
     "gustr.com", "jourrapide.com", "rhyta.com", "superrito.com",
     "teleworm.us",
+
+    # RFC 2606 reserved / probe inboxes (never a real customer)
+    "example.com", "example.org", "example.net", "example.edu",
+    "invalid", "localhost", "local", "test",
 })
+
+_PROBE_MARKERS = ("mailtest-", "reseller-test-", "mailtest")
 
 
 def is_disposable_email(email: str | None) -> bool:
@@ -103,6 +109,8 @@ def is_disposable_email(email: str | None) -> bool:
     if not domain:
         return False
     if domain in DISPOSABLE_DOMAINS:
+        return True
+    if any(marker in domain for marker in _PROBE_MARKERS):
         return True
     # Catch sub-domain abuse (e.g. inbox.mailinator.com)
     parts = domain.split(".")

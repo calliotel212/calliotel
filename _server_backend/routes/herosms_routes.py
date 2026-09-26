@@ -254,6 +254,8 @@ class BuyRequest(BaseModel):
 @router.post("/buy")
 async def buy_otp_number(req: BuyRequest, current_user=Depends(get_current_user)):
     """Purchase an OTP number and deduct from wallet."""
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     user_id = current_user["_id"]
 
     # 1. Get live price from provider
@@ -284,20 +286,25 @@ async def buy_otp_number(req: BuyRequest, current_user=Depends(get_current_user)
     except ValueError as fraud_err:
         raise HTTPException(status_code=429, detail=str(fraud_err))
 
-    # 3. Wallet check
+    from services.wallet_guard import credit as wallet_credit
+    from services.wallet_guard import debit_if_funded
+
     wallet  = await db.wallets.find_one({"user_id": user_id})
-    balance = float(wallet.get("balance", 0)) if wallet else 0.0
-    if balance < user_price:
+    reserved = await debit_if_funded(db, user_id, user_price)
+    if not reserved:
+        balance = float(wallet.get("balance", 0)) if wallet else 0.0
         raise HTTPException(
             status_code=402,
             detail=f"Insufficient balance. You need ${user_price:.2f} but have ${balance:.2f}."
         )
+    balance = float(reserved.get("balance", 0))
 
     # 3. Get number from provider
     result = await _provider_request({"action": "getNumber", "service": req.service, "operator": "any", "country": req.country})
     logger.info(f"OTP getNumber [{req.service}/{req.country}]: {result[:40]}")
 
     if not result.startswith("ACCESS_NUMBER"):
+        await wallet_credit(db, user_id, user_price)
         if "NO_NUMBERS" in result:
             raise HTTPException(status_code=503, detail="No numbers available right now. Try a different country or check back in a few minutes.")
         raise HTTPException(status_code=503, detail="Could not assign a number right now. Please try again.")
@@ -308,13 +315,8 @@ async def buy_otp_number(req: BuyRequest, current_user=Depends(get_current_user)
 
     svc_name = _service_info(req.service)["name"]
 
-    # 4. Deduct wallet
-    new_balance = balance - user_price
     now_iso = datetime.now(timezone.utc).isoformat()
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$set": {"balance": new_balance, "updated_at": now_iso}}
-    )
+    new_balance = round(float(balance), 2)
 
     # Fraud record (velocity tracking)
     try:
