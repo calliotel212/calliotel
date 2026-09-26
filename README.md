@@ -30,7 +30,10 @@ Use a proxy/VPN in the **same country** as the virtual number for WhatsApp and s
 src/                     Web app (React)
 _server_backend/         API routers (OTP, proxy, billing, calls)
 public/                  Static assets
+dramame/                 dramame.net site (separate Next.js app)
 ```
+
+The Calliotel client in `src/` is unchanged. dramame.net lives in `dramame/` so the two products do not share a UI. See `dramame/README.md` to run it.
 
 Secrets stay off GitHub: `.env`, API keys, and production credentials are gitignored.
 
