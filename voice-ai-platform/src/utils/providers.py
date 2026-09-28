@@ -24,7 +24,12 @@ def build_vad() -> silero.VAD:
 def build_stt(settings: Settings) -> stt.STT:
     if settings.deepgram_api_key:
         return deepgram.STT(model="nova-3", language="en-US")
-    return FasterWhisperSTT(model=settings.whisper_model)
+    return FasterWhisperSTT(
+        model=settings.whisper_model,
+        device=settings.whisper_device,
+        compute_type=settings.whisper_compute_type,
+        vad_filter=settings.whisper_vad_filter,
+    )
 
 
 def build_tts(settings: Settings) -> tts.TTS:

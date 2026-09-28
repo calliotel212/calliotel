@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from faster_whisper import WhisperModel
 from livekit.agents import stt
@@ -36,8 +38,9 @@ class FasterWhisperSTT(stt.STT):
         self,
         *,
         model: str = "base.en",
-        device: str = "auto",
-        compute_type: str = "default",
+        device: str = "cpu",
+        compute_type: str = "int8",
+        vad_filter: bool = False,
     ) -> None:
         super().__init__(
             capabilities=stt.STTCapabilities(
@@ -49,6 +52,7 @@ class FasterWhisperSTT(stt.STT):
         self._model_name = model
         self._device = device
         self._compute_type = compute_type
+        self._vad_filter = vad_filter
         self._model: WhisperModel | None = None
         self._lock = asyncio.Lock()
 
@@ -69,6 +73,11 @@ class FasterWhisperSTT(stt.STT):
             )
         return self._model
 
+    def prewarm(self) -> None:
+        """Load the Whisper model in a background thread to avoid first-turn latency."""
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(self._get_model).result()
+
     async def _recognize_impl(
         self,
         buffer: AudioBuffer,
@@ -84,7 +93,7 @@ class FasterWhisperSTT(stt.STT):
             segments, _info = model.transcribe(
                 audio,
                 language=lang,
-                vad_filter=True,
+                vad_filter=self._vad_filter,
             )
             return " ".join(segment.text.strip() for segment in segments).strip()
 

@@ -22,10 +22,21 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+### 8GB Mac (low RAM)
+
+For machines with about 8GB RAM (e.g. base MacBook Air), use the low-RAM profile:
+
+```bash
+cp .env.lowram.example .env
+ollama pull qwen2.5:3b
+```
+
+Key settings: `OLLAMA_MODEL=qwen2.5:3b`, `WHISPER_MODEL=tiny.en`, `WHISPER_DEVICE=cpu`, `WHISPER_COMPUTE_TYPE=int8`, `PIPER_VOICE=en_US-lessac-low`, and `WHISPER_VAD_FILTER=false` (Silero VAD already segments speech). The demo preloads Whisper and Piper at startup to reduce first-turn delay.
+
 ### STT
 
 - **Deepgram (recommended for latency):** set `DEEPGRAM_API_KEY` in `.env`
-- **Offline fallback:** leave `DEEPGRAM_API_KEY` empty; uses `faster-whisper` (`WHISPER_MODEL`, default `base.en`)
+- **Offline fallback:** leave `DEEPGRAM_API_KEY` empty; uses `faster-whisper` (`WHISPER_MODEL`, default `base.en`). Optional: `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `WHISPER_VAD_FILTER` (leave off when using Silero VAD).
 
 ### TTS
 

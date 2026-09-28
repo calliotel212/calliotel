@@ -18,6 +18,7 @@ node_modules/
 .env.*
 !.env.example
 !**/.env.example
+!**/.env.lowram.example
 *.pem
 *.p12
 *.key

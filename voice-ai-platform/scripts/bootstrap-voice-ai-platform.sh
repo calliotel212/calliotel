@@ -62,7 +62,40 @@ PIPER_DATA_DIR=data/piper
 
 # Local Whisper when DEEPGRAM_API_KEY is empty
 WHISPER_MODEL=base.en
+# WHISPER_DEVICE=cpu
+# WHISPER_COMPUTE_TYPE=int8
+# WHISPER_VAD_FILTER=false
 ENDOFFILE__env_example
+
+cat > ".env.lowram.example" <<'ENDOFFILE__env_lowram_example'
+# 8GB Mac profile — copy to .env: cp .env.lowram.example .env
+# Tuned for lower RAM: smaller LLM, tiny Whisper on CPU, light Piper voice.
+
+# LiveKit (required for `dev` mode; optional for `console` on recent SDK versions)
+LIVEKIT_URL=ws://127.0.0.1:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
+
+# Local Ollama — smaller model fits ~8GB unified memory with STT/TTS
+OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=qwen2.5:3b
+
+# STT: leave empty for local faster-whisper (recommended on low RAM)
+DEEPGRAM_API_KEY=
+
+# TTS: Piper low-quality voice uses less memory than medium/large
+TTS_PROVIDER=piper
+COQUI_MODEL=tts_models/en/ljspeech/tacotron2-DDC
+PIPER_VOICE=en_US-lessac-low
+PIPER_DATA_DIR=data/piper
+
+# Local Whisper — tiny.en + CPU int8 minimizes peak RAM
+WHISPER_MODEL=tiny.en
+WHISPER_DEVICE=cpu
+WHISPER_COMPUTE_TYPE=int8
+# Silero VAD already segments utterances; keep Whisper internal VAD off
+WHISPER_VAD_FILTER=false
+ENDOFFILE__env_lowram_example
 
 cat > ".gitignore" <<'ENDOFFILE__gitignore'
 .venv/
@@ -188,10 +221,21 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
+### 8GB Mac (low RAM)
+
+For machines with about 8GB RAM (e.g. base MacBook Air), use the low-RAM profile:
+
+```bash
+cp .env.lowram.example .env
+ollama pull qwen2.5:3b
+```
+
+Key settings: `OLLAMA_MODEL=qwen2.5:3b`, `WHISPER_MODEL=tiny.en`, `WHISPER_DEVICE=cpu`, `WHISPER_COMPUTE_TYPE=int8`, `PIPER_VOICE=en_US-lessac-low`, and `WHISPER_VAD_FILTER=false` (Silero VAD already segments speech). The demo preloads Whisper and Piper at startup to reduce first-turn delay.
+
 ### STT
 
 - **Deepgram (recommended for latency):** set `DEEPGRAM_API_KEY` in `.env`
-- **Offline fallback:** leave `DEEPGRAM_API_KEY` empty; uses `faster-whisper` (`WHISPER_MODEL`, default `base.en`)
+- **Offline fallback:** leave `DEEPGRAM_API_KEY` empty; uses `faster-whisper` (`WHISPER_MODEL`, default `base.en`). Optional: `WHISPER_DEVICE`, `WHISPER_COMPUTE_TYPE`, `WHISPER_VAD_FILTER` (leave off when using Silero VAD).
 
 ### TTS
 
@@ -245,6 +289,7 @@ Use `dev` when a LiveKit server is running and you want room-based testing.
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -280,6 +325,13 @@ async def entrypoint(ctx: JobContext) -> None:
 
     vad = build_vad()
     stt_engine = build_stt(settings)
+    tts_engine = build_tts(settings)
+
+    if hasattr(stt_engine, "prewarm"):
+        await asyncio.to_thread(stt_engine.prewarm)
+    if hasattr(tts_engine, "prewarm"):
+        await asyncio.to_thread(tts_engine.prewarm)
+
     if not stt_engine.capabilities.streaming:
         stt_engine = stt.StreamAdapter(stt=stt_engine, vad=vad)
 
@@ -287,7 +339,7 @@ async def entrypoint(ctx: JobContext) -> None:
         vad=vad,
         stt=stt_engine,
         llm=build_llm(settings),
-        tts=build_tts(settings),
+        tts=tts_engine,
     )
 
     assistant = build_local_assistant()
@@ -364,6 +416,8 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+
 import numpy as np
 from faster_whisper import WhisperModel
 from livekit.agents import stt
@@ -398,8 +452,9 @@ class FasterWhisperSTT(stt.STT):
         self,
         *,
         model: str = "base.en",
-        device: str = "auto",
-        compute_type: str = "default",
+        device: str = "cpu",
+        compute_type: str = "int8",
+        vad_filter: bool = False,
     ) -> None:
         super().__init__(
             capabilities=stt.STTCapabilities(
@@ -411,6 +466,7 @@ class FasterWhisperSTT(stt.STT):
         self._model_name = model
         self._device = device
         self._compute_type = compute_type
+        self._vad_filter = vad_filter
         self._model: WhisperModel | None = None
         self._lock = asyncio.Lock()
 
@@ -431,6 +487,11 @@ class FasterWhisperSTT(stt.STT):
             )
         return self._model
 
+    def prewarm(self) -> None:
+        """Load the Whisper model in a background thread to avoid first-turn latency."""
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pool.submit(self._get_model).result()
+
     async def _recognize_impl(
         self,
         buffer: AudioBuffer,
@@ -446,7 +507,7 @@ class FasterWhisperSTT(stt.STT):
             segments, _info = model.transcribe(
                 audio,
                 language=lang,
-                vad_filter=True,
+                vad_filter=self._vad_filter,
             )
             return " ".join(segment.text.strip() for segment in segments).strip()
 
@@ -699,12 +760,22 @@ def _env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 @dataclass(frozen=True)
 class Settings:
     ollama_base_url: str
     ollama_model: str
     deepgram_api_key: str
     whisper_model: str
+    whisper_device: str
+    whisper_compute_type: str
+    whisper_vad_filter: bool
     tts_provider: str
     coqui_model: str
     piper_voice: str
@@ -720,6 +791,9 @@ def get_settings() -> Settings:
         ollama_model=_env("OLLAMA_MODEL", "huihui_ai/qwen3-abliterated:8b"),
         deepgram_api_key=_env("DEEPGRAM_API_KEY"),
         whisper_model=_env("WHISPER_MODEL", "base.en"),
+        whisper_device=_env("WHISPER_DEVICE", "cpu"),
+        whisper_compute_type=_env("WHISPER_COMPUTE_TYPE", "int8"),
+        whisper_vad_filter=_env_bool("WHISPER_VAD_FILTER", False),
         tts_provider=_env("TTS_PROVIDER", "piper").lower(),
         coqui_model=_env(
             "COQUI_MODEL", "tts_models/en/ljspeech/tacotron2-DDC"
@@ -759,7 +833,12 @@ def build_vad() -> silero.VAD:
 def build_stt(settings: Settings) -> stt.STT:
     if settings.deepgram_api_key:
         return deepgram.STT(model="nova-3", language="en-US")
-    return FasterWhisperSTT(model=settings.whisper_model)
+    return FasterWhisperSTT(
+        model=settings.whisper_model,
+        device=settings.whisper_device,
+        compute_type=settings.whisper_compute_type,
+        vad_filter=settings.whisper_vad_filter,
+    )
 
 
 def build_tts(settings: Settings) -> tts.TTS:

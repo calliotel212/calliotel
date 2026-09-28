@@ -15,6 +15,7 @@ Use `dev` when a LiveKit server is running and you want room-based testing.
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -50,6 +51,13 @@ async def entrypoint(ctx: JobContext) -> None:
 
     vad = build_vad()
     stt_engine = build_stt(settings)
+    tts_engine = build_tts(settings)
+
+    if hasattr(stt_engine, "prewarm"):
+        await asyncio.to_thread(stt_engine.prewarm)
+    if hasattr(tts_engine, "prewarm"):
+        await asyncio.to_thread(tts_engine.prewarm)
+
     if not stt_engine.capabilities.streaming:
         stt_engine = stt.StreamAdapter(stt=stt_engine, vad=vad)
 
@@ -57,7 +65,7 @@ async def entrypoint(ctx: JobContext) -> None:
         vad=vad,
         stt=stt_engine,
         llm=build_llm(settings),
-        tts=build_tts(settings),
+        tts=tts_engine,
     )
 
     assistant = build_local_assistant()
