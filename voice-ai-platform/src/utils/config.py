@@ -19,11 +19,26 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
+def _default_use_silero_vad(deepgram_api_key: str) -> bool:
+    raw = os.getenv("USE_SILERO_VAD")
+    if raw is not None:
+        return raw.strip().lower() in ("1", "true", "yes", "on")
+    return not bool(deepgram_api_key)
+
+
 @dataclass(frozen=True)
 class Settings:
+    llm_provider: str
+    groq_api_key: str
+    groq_model: str
     ollama_base_url: str
     ollama_model: str
     deepgram_api_key: str
+    deepgram_stt_model: str
+    deepgram_tts_model: str
+    cartesia_api_key: str
+    cartesia_voice: str
+    use_silero_vad: bool
     whisper_model: str
     whisper_device: str
     whisper_compute_type: str
@@ -39,10 +54,19 @@ class Settings:
 
 
 def get_settings() -> Settings:
+    deepgram_api_key = _env("DEEPGRAM_API_KEY")
     return Settings(
+        llm_provider=_env("LLM_PROVIDER", "auto").lower(),
+        groq_api_key=_env("GROQ_API_KEY"),
+        groq_model=_env("GROQ_MODEL", "llama-3.1-8b-instant"),
         ollama_base_url=_env("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
         ollama_model=_env("OLLAMA_MODEL", "huihui_ai/qwen3-abliterated:8b"),
-        deepgram_api_key=_env("DEEPGRAM_API_KEY"),
+        deepgram_api_key=deepgram_api_key,
+        deepgram_stt_model=_env("DEEPGRAM_STT_MODEL", "nova-3"),
+        deepgram_tts_model=_env("DEEPGRAM_TTS_MODEL", "aura-2-andromeda-en"),
+        cartesia_api_key=_env("CARTESIA_API_KEY"),
+        cartesia_voice=_env("CARTESIA_VOICE"),
+        use_silero_vad=_default_use_silero_vad(deepgram_api_key),
         whisper_model=_env("WHISPER_MODEL", "base.en"),
         whisper_device=_env("WHISPER_DEVICE", "cpu"),
         whisper_compute_type=_env("WHISPER_COMPUTE_TYPE", "int8"),
@@ -58,3 +82,44 @@ def get_settings() -> Settings:
         livekit_api_secret=_env("LIVEKIT_API_SECRET", "secret"),
         redis_url=_env("REDIS_URL", "redis://127.0.0.1:6379/0"),
     )
+
+
+def resolve_llm_provider(settings: Settings) -> str:
+    provider = settings.llm_provider
+    if provider == "auto":
+        if settings.groq_api_key:
+            return "groq"
+        return "ollama"
+    if provider not in ("groq", "ollama"):
+        raise ValueError(
+            f"Unknown LLM_PROVIDER={provider!r}. Use groq, ollama, or auto."
+        )
+    return provider
+
+
+def apply_livekit_env(settings: Settings) -> None:
+    os.environ.setdefault("LIVEKIT_URL", settings.livekit_url)
+    os.environ.setdefault("LIVEKIT_API_KEY", settings.livekit_api_key)
+    os.environ.setdefault("LIVEKIT_API_SECRET", settings.livekit_api_secret)
+
+
+def apply_groq_env(settings: Settings) -> None:
+    if settings.groq_api_key:
+        os.environ.setdefault("GROQ_API_KEY", settings.groq_api_key)
+
+
+def apply_deepgram_env(settings: Settings) -> None:
+    if settings.deepgram_api_key:
+        os.environ.setdefault("DEEPGRAM_API_KEY", settings.deepgram_api_key)
+
+
+def apply_cartesia_env(settings: Settings) -> None:
+    if settings.cartesia_api_key:
+        os.environ.setdefault("CARTESIA_API_KEY", settings.cartesia_api_key)
+
+
+def apply_provider_env(settings: Settings) -> None:
+    apply_livekit_env(settings)
+    apply_groq_env(settings)
+    apply_deepgram_env(settings)
+    apply_cartesia_env(settings)

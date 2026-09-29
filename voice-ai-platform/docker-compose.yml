@@ -9,6 +9,8 @@ services:
       - redis_data:/data
 
   ollama:
+    profiles:
+      - local-llm
     image: ollama/ollama:latest
     restart: unless-stopped
     expose:
@@ -28,12 +30,10 @@ services:
     env_file:
       - .env
     environment:
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434/v1}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       PIPER_DATA_DIR: ${PIPER_DATA_DIR:-/data/piper}
     depends_on:
       - redis
-      - ollama
     volumes:
       - piper_data:/data/piper
 

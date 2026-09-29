@@ -1,5 +1,5 @@
-# LiveKit Agents core + common plugins (Phase 1 local demo)
-livekit-agents[openai,deepgram,silero]~=1.2
+# LiveKit Agents core + cloud plugins (Groq via openai, Deepgram, Cartesia)
+livekit-agents[openai,deepgram,cartesia]~=1.2
 python-dotenv>=1.0.0
 
 # Local STT fallback (when DEEPGRAM_API_KEY is unset)
@@ -8,4 +8,5 @@ faster-whisper>=1.1.0
 # Self-hosted TTS default (works on Python 3.12)
 piper-tts>=1.2.0
 
+# Optional: local Silero VAD — pip install '.[silero]' when USE_SILERO_VAD=true
 # Optional: Coqui TTS — install only on Python 3.11: pip install TTS

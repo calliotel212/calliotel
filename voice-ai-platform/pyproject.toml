@@ -9,11 +9,14 @@ description = "calliotel.ai Voice AI Platform — LiveKit agent workers"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "livekit-agents[openai,deepgram,silero]~=1.2",
+    "livekit-agents[openai,deepgram,cartesia]~=1.2",
     "python-dotenv>=1.0.0",
     "faster-whisper>=1.1.0",
     "piper-tts>=1.2.0",
 ]
+
+[project.optional-dependencies]
+silero = ["livekit-agents[silero]~=1.2"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

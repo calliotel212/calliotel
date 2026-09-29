@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Local LiveKit voice demo: Ollama LLM + Deepgram or Whisper STT + Piper/Coqui TTS.
+Local LiveKit voice demo: Groq/Ollama LLM + Deepgram or Whisper STT + cloud or Piper TTS.
 
-Run on your machine (where Ollama listens on localhost:11434):
+Uses the same worker as production (see src/agents/worker.py). For cloud mode, copy
+.env.cloud.example to .env. For local dev with Ollama on localhost:11434:
 
   cd voice-ai-platform
   source .venv/bin/activate
