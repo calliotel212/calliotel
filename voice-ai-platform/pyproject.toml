@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calliotel-voice"
+version = "0.1.0"
+description = "calliotel.ai Voice AI Platform — LiveKit agent workers"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "livekit-agents[openai,deepgram,silero]~=1.2",
+    "python-dotenv>=1.0.0",
+    "faster-whisper>=1.1.0",
+    "piper-tts>=1.2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

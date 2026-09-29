@@ -1,0 +1,43 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    expose:
+      - "11434"
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-huihui_ai/qwen3-abliterated:4b}
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./scripts/digitalocean/ollama-entrypoint.sh:/entrypoint.sh:ro
+
+  agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434/v1}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      PIPER_DATA_DIR: ${PIPER_DATA_DIR:-/data/piper}
+    depends_on:
+      - redis
+      - ollama
+    volumes:
+      - piper_data:/data/piper
+
+volumes:
+  ollama_data:
+  redis_data:
+  piper_data:

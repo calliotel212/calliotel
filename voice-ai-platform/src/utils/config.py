@@ -35,6 +35,7 @@ class Settings:
     livekit_url: str
     livekit_api_key: str
     livekit_api_secret: str
+    redis_url: str
 
 
 def get_settings() -> Settings:
@@ -55,4 +56,5 @@ def get_settings() -> Settings:
         livekit_url=_env("LIVEKIT_URL", "ws://127.0.0.1:7880"),
         livekit_api_key=_env("LIVEKIT_API_KEY", "devkey"),
         livekit_api_secret=_env("LIVEKIT_API_SECRET", "secret"),
+        redis_url=_env("REDIS_URL", "redis://127.0.0.1:6379/0"),
     )

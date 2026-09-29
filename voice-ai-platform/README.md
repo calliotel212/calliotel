@@ -57,6 +57,56 @@ cp .env.example .env
 python examples/local_voice_demo.py console
 ```
 
+## Deploy to DigitalOcean
+
+Production runs the LiveKit **agent worker** in Docker on a single Ubuntu droplet, with co-located **Ollama** (LLM), **Redis** (session state for platform services), and **Piper** TTS on the worker container. LiveKit itself is **LiveKit Cloud** or your own LiveKit server — only the worker connects outbound to `LIVEKIT_URL` (typically `wss://...`).
+
+### Architecture
+
+```text
+                    ┌─────────────────┐
+  Phone / WebRTC ──►│ LiveKit Cloud   │
+                    │ (or self-host)  │
+                    └────────┬────────┘
+                             │ wss (outbound from droplet)
+                    ┌────────▼────────┐
+                    │  agent worker   │──► Deepgram (optional STT)
+                    │  (this repo)    │──► faster-whisper (local STT)
+                    └─┬───────┬───────┘
+                      │       │
+              ┌───────▼──┐ ┌──▼───────┐
+              │  Ollama  │ │  Redis   │
+              │  :11434  │ │  :6379   │
+              └──────────┘ └──────────┘
+```
+
+### Prerequisites
+
+- DigitalOcean droplet (Ubuntu 22.04+); see `scripts/digitalocean/bootstrap.sh` and Project handoff for sizing.
+- LiveKit project URL and API key/secret ([LiveKit Cloud](https://cloud.livekit.io/) or self-hosted).
+- Optional: [Deepgram](https://deepgram.com/) API key (recommended in production to avoid running Whisper on the same box as Ollama).
+
+### Steps
+
+1. Create a droplet and SSH in as root (or a sudo user).
+2. Run the bootstrap script (clone + Docker + Compose):
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/calliotel212/calliotel/main/voice-ai-platform/scripts/digitalocean/bootstrap.sh -o /tmp/bootstrap.sh
+   chmod +x /tmp/bootstrap.sh
+   sudo REPO_URL=https://github.com/calliotel212/calliotel.git BRANCH=main /tmp/bootstrap.sh
+   ```
+
+   Or clone the repo and run `sudo bash voice-ai-platform/scripts/digitalocean/bootstrap.sh` from your checkout.
+
+3. Edit `/opt/calliotel/voice-ai-platform/.env`: set `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, and optional `DEEPGRAM_API_KEY`.
+4. Restart: `cd /opt/calliotel/voice-ai-platform && docker compose up -d --build`.
+5. Confirm the worker registered in the LiveKit project dashboard and check logs: `docker compose logs -f agent`.
+
+Ollama pulls `OLLAMA_MODEL` (default `huihui_ai/qwen3-abliterated:4b`) on first start via `scripts/digitalocean/ollama-entrypoint.sh`. Piper voice assets download on first TTS use into the `piper_data` volume.
+
+Production worker entrypoint: `src/agents/worker.py` (started by `python -m livekit.agents start`, not console mode). Agent name: `livekit.toml` → `[agent] name`.
+
 ## License
 
 Apache 2.0 (planned)

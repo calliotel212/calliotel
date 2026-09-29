@@ -1,0 +1,8 @@
+# LiveKit agent worker manifest (self-hosted and `lk agent` deploy).
+# Docs: https://docs.livekit.io/deploy/agents/managing-deployments/
+
+[agent]
+name = "calliotel-voice-assistant"
+
+[build]
+dockerfile = "Dockerfile"
