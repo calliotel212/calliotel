@@ -59,6 +59,4 @@ async def entrypoint(ctx: JobContext) -> None:
 
     assistant = build_local_assistant()
     await session.start(room=ctx.room, agent=assistant)
-    await session.generate_reply(
-        instructions="Greet the user briefly and ask how you can help."
-    )
+    # No opening generate_reply — system prompt requires waiting for the caller's first words.
