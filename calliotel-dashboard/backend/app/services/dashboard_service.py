@@ -9,7 +9,10 @@ def get_dashboard_summary(db: Session, *, tenant_id: str) -> DashboardSummaryRes
     if tenant is None:
         raise ValueError("Tenant not found")
 
-    agent_status = tenant.agent_status if tenant.agent_status in ("online", "offline") else "offline"
+    if tenant.activation_status == "active":
+        agent_status = "online"
+    else:
+        agent_status = "offline"
     billing_status = tenant.billing_status
     if billing_status not in ("trial", "active", "past_due"):
         billing_status = "trial"

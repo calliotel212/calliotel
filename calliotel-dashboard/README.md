@@ -64,7 +64,26 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
+## Phase 4 — phone picker + activate
+
+After login, open **Numbers** (`/dashboard/numbers`):
+
+1. Assign one of ten mock US numbers (`+1 555 0100` … `0109`).
+2. While status is **pending**, you may switch to another available number.
+3. Click **Activate Agent** to lock the number and set the agent **online** (dashboard summary reflects activation).
+
+API (Bearer token):
+
+```bash
+curl -s http://localhost:8000/api/v1/dashboard/numbers -H "Authorization: Bearer $TOKEN" | jq
+curl -s -X POST http://localhost:8000/api/v1/dashboard/numbers/assign \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"number_id":"us-555-0100"}' | jq
+curl -s -X POST http://localhost:8000/api/v1/dashboard/numbers/activate \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
 ## Scope
 
-**Done:** Phase 1 auth + Phase 2 dashboard home (summary API, `/dashboard` + nav placeholders)  
-**TODO:** Phase 3 business setup, phone picker, call logs, Stripe billing
+**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate  
+**TODO:** Call logs, Stripe billing

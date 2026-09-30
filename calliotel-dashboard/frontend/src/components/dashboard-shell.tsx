@@ -11,6 +11,7 @@ type MeResponse = { email: string; tenant_name: string };
 const NAV = [
   { href: "/dashboard", label: "Home" },
   { href: "/dashboard/setup", label: "Setup" },
+  { href: "/dashboard/numbers", label: "Numbers" },
   { href: "/dashboard/calls", label: "Calls" },
   { href: "/dashboard/billing", label: "Billing" },
 ];
@@ -66,7 +67,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="space-y-1 p-3">
           {NAV.map((item) => {
-            const active = pathname === item.href;
+            const active =
+              pathname === item.href ||
+              (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
             return (
               <Link
                 key={item.href}
