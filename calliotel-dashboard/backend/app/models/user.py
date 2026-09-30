@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,6 +18,13 @@ class Tenant(Base):
     calls_this_month: Mapped[int] = mapped_column(default=0)
     minutes_used: Mapped[int] = mapped_column(default=0)
     billing_status: Mapped[str] = mapped_column(String(32), default="trial")
+    business_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    business_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    business_hours: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    business_services: Mapped[str | None] = mapped_column(Text, nullable=True)
+    business_faq: Mapped[str | None] = mapped_column(Text, nullable=True)
+    preferred_language: Mapped[str] = mapped_column(String(8), default="en")
+    agent_voice: Mapped[str] = mapped_column(String(16), default="female")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list["User"]] = relationship(back_populates="tenant")

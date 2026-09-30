@@ -27,13 +27,21 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       router.replace("/login");
       return;
     }
-    apiGet<MeResponse>("/api/v1/auth/me", token)
-      .then(setMe)
-      .catch(() => {
-        clearAccessToken();
-        router.replace("/login");
-      })
-      .finally(() => setReady(true));
+    function loadMe() {
+      const t = getAccessToken();
+      if (!t) return;
+      apiGet<MeResponse>("/api/v1/auth/me", t)
+        .then(setMe)
+        .catch(() => {
+          clearAccessToken();
+          router.replace("/login");
+        })
+        .finally(() => setReady(true));
+    }
+    loadMe();
+    const onTenantUpdated = () => loadMe();
+    window.addEventListener("calliotel:tenant-updated", onTenantUpdated);
+    return () => window.removeEventListener("calliotel:tenant-updated", onTenantUpdated);
   }, [router]);
 
   function onLogout() {
