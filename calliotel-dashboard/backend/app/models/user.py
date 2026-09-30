@@ -12,6 +12,11 @@ class Tenant(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     name: Mapped[str] = mapped_column(String(255), default="My Business")
+    agent_status: Mapped[str] = mapped_column(String(32), default="offline")
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    calls_this_month: Mapped[int] = mapped_column(default=0)
+    minutes_used: Mapped[int] = mapped_column(default=0)
+    billing_status: Mapped[str] = mapped_column(String(32), default="trial")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     users: Mapped[list["User"]] = relationship(back_populates="tenant")

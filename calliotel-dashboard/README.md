@@ -1,6 +1,6 @@
-# Calliotel client dashboard (Phase 1 — auth)
+# Calliotel client dashboard
 
-Customer-facing app for **app.calliotel.ai**: signup, login, forgot/reset password.
+Customer-facing app for **app.calliotel.ai**: auth + business dashboard.
 
 ## Stack
 
@@ -22,8 +22,11 @@ docker compose up -d --build
 - Web: http://localhost:3000  
 - API: http://localhost:8000  
 - Health: http://localhost:8000/health  
+- **Dashboard (after login):** http://localhost:3000/dashboard  
 
 Migrations run automatically when the `api` container starts (`alembic upgrade head`).
+
+JWT is stored in **sessionStorage** (cleared when the browser tab closes).
 
 ## Test signup (curl)
 
@@ -43,6 +46,12 @@ TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/auth/login \
 curl -s http://localhost:8000/api/v1/auth/me -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+Dashboard summary:
+
+```bash
+curl -s http://localhost:8000/api/v1/dashboard/summary -H "Authorization: Bearer $TOKEN" | jq
+```
+
 Forgot password (logs reset URL if `RESEND_API_KEY` is still a placeholder — check `docker compose logs api`):
 
 ```bash
@@ -55,7 +64,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
-## Phase 1 scope
+## Scope
 
-**Done:** auth API + auth pages + Compose + Postgres  
-**TODO (Phase 2+):** dashboard home, business setup, phone picker, call logs, Stripe billing, Caddy deploy automation
+**Done:** Phase 1 auth + Phase 2 dashboard home (summary API, `/dashboard` + nav placeholders)  
+**TODO:** Phase 3 business setup, phone picker, call logs, Stripe billing

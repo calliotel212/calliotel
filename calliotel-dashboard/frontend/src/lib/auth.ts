@@ -12,3 +12,7 @@ export function getAccessToken(): string | null {
 export function clearAccessToken(): void {
   if (typeof window !== "undefined") sessionStorage.removeItem(TOKEN_KEY);
 }
+
+export function logout(): void {
+  clearAccessToken();
+}

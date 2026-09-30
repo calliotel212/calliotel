@@ -1,18 +1,19 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AuthLink, AuthShell } from "@/components/auth-shell";
-import { apiGet, apiPost } from "@/lib/api-client";
+import { apiPost } from "@/lib/api-client";
 import { saveAccessToken } from "@/lib/auth";
 
 export default function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(
+  const [info, setInfo] = useState<string | null>(
     registered ? "Account created. Sign in below." : null,
   );
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ export default function LoginForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
+    setInfo(null);
     setLoading(true);
     try {
       const data = await apiPost<{ access_token: string }>("/api/v1/auth/login", {
@@ -28,11 +29,7 @@ export default function LoginForm() {
         password,
       });
       saveAccessToken(data.access_token);
-      const me = await apiGet<{ email: string; tenant_name: string }>(
-        "/api/v1/auth/me",
-        data.access_token,
-      );
-      setSuccess(`Signed in as ${me.email} (${me.tenant_name}). Dashboard coming in Phase 2.`);
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -70,7 +67,7 @@ export default function LoginForm() {
           />
         </div>
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        {success ? <p className="text-sm text-green-700">{success}</p> : null}
+        {info ? <p className="text-sm text-green-700">{info}</p> : null}
         <button
           type="submit"
           disabled={loading}
