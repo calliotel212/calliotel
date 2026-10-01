@@ -39,6 +39,10 @@ LIMITS = {
     "otp_purchase_per_user_24h": 8,       # max OTP numbers per user per day
     "otp_purchase_unpaid_per_user_24h": 0,  # unpaid accounts cannot buy provider OTP
 
+    # Auto-ban unpaid accounts that repeatedly abandon crypto invoices (bot probing).
+    # Tunable via env CRYPTO_EXPIRED_BAN_THRESHOLD; 0 disables the auto-ban.
+    "crypto_expired_ban_threshold_24h": int(os.environ.get("CRYPTO_EXPIRED_BAN_THRESHOLD", "3")),
+
     # New-account hold (minutes) before card payments are allowed — 3 days
     "new_account_hold_minutes": 4320,
 
@@ -325,6 +329,67 @@ async def record_otp_purchase(
         "blocked": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
+
+
+# ── Crypto invoice abuse (expired/abandoned) ────────────────────────────────────
+
+async def record_and_check_crypto_abuse(user_id: str, user_email: str = "", ip: str = "") -> bool:
+    """Record an expired/failed crypto invoice and auto-ban repeat abusers.
+
+    Called when a crypto invoice expires. If the same account has abandoned
+    ``crypto_expired_ban_threshold_24h`` crypto invoices within 24h AND has never
+    made a real payment, it is banned. Bots probe crypto repeatedly and never pay,
+    so real paying customers are never auto-banned. Returns True if this call
+    banned the account.
+    """
+    now = datetime.now(timezone.utc)
+    key = str(user_id or user_email or "").strip()
+    if not key:
+        return False
+    try:
+        await db.fraud_events.insert_one({
+            "type": "crypto_expired",
+            "user_id": key,
+            "user_email": user_email,
+            "ip": ip,
+            "blocked": False,
+            "created_at": now.isoformat(),
+        })
+    except Exception as e:
+        logger.warning("could not record crypto_expired event: %s", e)
+
+    threshold = int(LIMITS.get("crypto_expired_ban_threshold_24h", 3) or 0)
+    if threshold <= 0:
+        return False
+
+    count = await db.fraud_events.count_documents({
+        "type": "crypto_expired",
+        "user_id": key,
+        "created_at": {"$gte": _window_iso()},
+    })
+    if count < threshold:
+        return False
+
+    # Protect real customers: only auto-ban accounts that have never paid.
+    wallet = await db.wallets.find_one({"user_id": key})
+    if wallet and float(wallet.get("lifetime_paid_usd") or 0) > 0:
+        return False
+
+    res = await db.users.update_one(
+        {"$or": [{"_id": key}, {"user_id": key}, {"email": user_email or key}]},
+        {"$set": {
+            "banned": True,
+            "banned_at": now.isoformat(),
+            "banned_reason": f"Auto: {count} expired crypto invoices in 24h (likely bot)",
+        }},
+    )
+    banned = bool(getattr(res, "modified_count", 0))
+    if banned:
+        logger.warning(
+            "🚫 Auto-banned %s — %d expired crypto invoices in 24h",
+            user_email or key, count,
+        )
+    return banned
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
