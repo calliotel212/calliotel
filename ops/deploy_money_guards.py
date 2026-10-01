@@ -111,10 +111,21 @@ def guard_voice_calls(text: str) -> str:
 
 
 PATCHES: dict[str, list] = {
+    # Validated in this repo.
     "routes/fivesim_otp.py": [guard_inventory_buy],
     "routes/herosms_routes.py": [guard_inventory_buy],
     "routes/proxy_routes.py": [guard_inventory_buy],
     "routes/calls.py": [guard_voice_calls],
+    # Provider-cost routes that live only on production (not in this repo). They
+    # are guarded ONLY if they use the standard `wallet = find_one(...)` +
+    # `reserved = await debit_if_funded(db, user_id, X)` pattern; any that differ
+    # are safely skipped and reported in the dry run so they can be reviewed.
+    "routes/sms.py": [guard_inventory_buy],
+    "routes/sms_automation.py": [guard_inventory_buy],
+    "routes/premium_numbers.py": [guard_inventory_buy],
+    "routes/number_management.py": [guard_inventory_buy],
+    "routes/number_pool.py": [guard_inventory_buy],
+    "routes/esim_routes.py": [guard_inventory_buy],
 }
 
 
