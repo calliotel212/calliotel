@@ -70,7 +70,8 @@ const SQLITE_SCHEMA = `
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       episode_alerts INTEGER NOT NULL DEFAULT 1,
       product_news INTEGER NOT NULL DEFAULT 0,
-      security_email INTEGER NOT NULL DEFAULT 1
+      security_email INTEGER NOT NULL DEFAULT 1,
+      auto_post_confirmations INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS progress (
@@ -105,8 +106,37 @@ const SQLITE_SCHEMA = `
       created_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS social_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL CHECK (provider IN ('tiktok', 'instagram')),
+      handle TEXT,
+      access_token_encrypted TEXT,
+      refresh_token_encrypted TEXT,
+      expires_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      UNIQUE (user_id, provider)
+    );
+
+    CREATE TABLE IF NOT EXISTS post_queue (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      episode_id TEXT NOT NULL,
+      provider TEXT NOT NULL CHECK (provider IN ('tiktok', 'instagram')),
+      caption TEXT NOT NULL DEFAULT '',
+      scheduled_at INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'approved', 'posted', 'failed')),
+      external_post_id TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token);
     CREATE INDEX IF NOT EXISTS idx_users_reset ON users(reset_token);
+    CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_post_queue_user ON post_queue(user_id);
   `;
 
 // Postgres INTEGER is 32-bit. Timestamps are stored as milliseconds, so those columns are BIGINT.
@@ -136,7 +166,8 @@ const POSTGRES_SCHEMA = [
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       episode_alerts INTEGER NOT NULL DEFAULT 1,
       product_news INTEGER NOT NULL DEFAULT 0,
-      security_email INTEGER NOT NULL DEFAULT 1
+      security_email INTEGER NOT NULL DEFAULT 1,
+      auto_post_confirmations INTEGER NOT NULL DEFAULT 0
     )`,
   `CREATE TABLE IF NOT EXISTS progress (
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -166,8 +197,36 @@ const POSTGRES_SCHEMA = [
       url TEXT NOT NULL,
       created_at BIGINT NOT NULL
     )`,
+  `CREATE TABLE IF NOT EXISTS social_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      provider TEXT NOT NULL CHECK (provider IN ('tiktok', 'instagram')),
+      handle TEXT,
+      access_token_encrypted TEXT,
+      refresh_token_encrypted TEXT,
+      expires_at BIGINT,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL,
+      UNIQUE (user_id, provider)
+    )`,
+  `CREATE TABLE IF NOT EXISTS post_queue (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      episode_id TEXT NOT NULL,
+      provider TEXT NOT NULL CHECK (provider IN ('tiktok', 'instagram')),
+      caption TEXT NOT NULL DEFAULT '',
+      scheduled_at BIGINT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'approved', 'posted', 'failed')),
+      external_post_id TEXT,
+      error TEXT,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL
+    )`,
   `CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token)`,
   `CREATE INDEX IF NOT EXISTS idx_users_reset ON users(reset_token)`,
+  `CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_post_queue_user ON post_queue(user_id)`,
+  `ALTER TABLE preferences ADD COLUMN IF NOT EXISTS auto_post_confirmations INTEGER NOT NULL DEFAULT 0`,
 ];
 
 class Mutex {
@@ -191,6 +250,14 @@ class Mutex {
   }
 }
 
+function sqliteHasColumn(database: DatabaseSync, table: string, column: string): boolean {
+  const rows = database.prepare(`PRAGMA table_info(${table})`).all();
+  return rows.some((row) => {
+    if (!row || typeof row !== "object") return false;
+    return (row as { name?: unknown }).name === column;
+  });
+}
+
 function createSqlite(): Db {
   const dir = path.join(process.cwd(), "data");
   fs.mkdirSync(dir, { recursive: true });
@@ -205,6 +272,9 @@ function createSqlite(): Db {
   const ensure = () => {
     if (schemaReady) return;
     database.exec(SQLITE_SCHEMA);
+    if (!sqliteHasColumn(database, "preferences", "auto_post_confirmations")) {
+      database.exec("ALTER TABLE preferences ADD COLUMN auto_post_confirmations INTEGER NOT NULL DEFAULT 0");
+    }
     schemaReady = true;
   };
 

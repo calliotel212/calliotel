@@ -29,3 +29,15 @@ export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 export function isOAuthProvider(value: string): value is OAuthProvider {
   return (OAUTH_PROVIDERS as readonly string[]).includes(value);
 }
+
+/** Posting providers. These are not sign-in methods. */
+export const AUTO_POST_PROVIDERS = ["tiktok", "instagram"] as const;
+export type AutoPostProvider = (typeof AUTO_POST_PROVIDERS)[number];
+
+export function isAutoPostProvider(value: string): value is AutoPostProvider {
+  return (AUTO_POST_PROVIDERS as readonly string[]).includes(value);
+}
+
+export function autoPostProviderLabel(provider: AutoPostProvider): string {
+  return provider === "tiktok" ? "TikTok" : "Instagram";
+}

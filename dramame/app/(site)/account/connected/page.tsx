@@ -12,7 +12,7 @@ export default async function ConnectedPage() {
   return (
     <main className="page">
       <h1>Connected accounts</h1>
-      <p className="lede">Google, Facebook, and Apple can be linked through Auth.js. Instagram is not a sign-in method.</p>
+      <p className="lede">Google, Facebook, and Apple can be linked through Auth.js. TikTok and Instagram are for auto-post, and they stay off until that is set up.</p>
       <ConnectedAccounts flags={socialConfig()} linked={linked} />
     </main>
   );

@@ -8,10 +8,12 @@ export function PreferencesForm({
   episodeAlerts,
   productNews,
   securityEmail,
+  autoPostConfirmations,
 }: {
   episodeAlerts: boolean;
   productNews: boolean;
   securityEmail: boolean;
+  autoPostConfirmations: boolean;
 }) {
   const [state, action, pending] = useActionState(savePreferencesAction, initialFormState);
   return (
@@ -28,6 +30,10 @@ export function PreferencesForm({
       <label className="check">
         <input type="checkbox" name="securityEmail" defaultChecked={securityEmail} />
         <span>Account security email</span>
+      </label>
+      <label className="check">
+        <input type="checkbox" name="autoPostConfirmations" defaultChecked={autoPostConfirmations} />
+        <span>Auto-post confirmations</span>
       </label>
       <p className="hint">Nothing is publishing yet. These choices are saved for later.</p>
       <button className="button button-primary" type="submit" disabled={pending} aria-busy={pending}>

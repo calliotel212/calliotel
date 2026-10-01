@@ -2,17 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DevNotice } from "@/components/dev-notice";
 import { ResendForm } from "@/components/resend-form";
-import { PREVIEW_SERIES_ID } from "@/lib/episodes";
+import { logout } from "@/lib/actions/auth";
 import { requireUser } from "@/lib/session";
-import { VISIBLE_SOCIAL_LINKS } from "@/lib/social";
-import { getProgress, latestDevLink } from "@/lib/users";
+import { latestDevLink, listOAuth } from "@/lib/users";
 
 export const metadata: Metadata = { title: "Account" };
 
+const SIGN_IN_PROVIDERS = [
+  { id: "google", label: "Google" },
+  { id: "facebook", label: "Facebook" },
+  { id: "apple", label: "Apple" },
+] as const;
+
 export default async function AccountPage() {
   const user = await requireUser();
-  const opened = await getProgress(user.id, PREVIEW_SERIES_ID);
   const verifyUrl = user.emailVerified ? null : await latestDevLink(user.id, "verify");
+  const linked = new Set((await listOAuth(user.id)).map((row) => row.provider));
   return (
     <main className="page">
       <p className="eyebrow">Account</p>
@@ -29,35 +34,36 @@ export default async function AccountPage() {
         </section>
       )}
       <section className="panel">
-        <h2>Continue</h2>
-        {opened > 0 ? (
-          <p>You have opened {opened} placeholder card{opened === 1 ? "" : "s"} in the scroll preview.</p>
-        ) : (
-          <p>Nothing is in progress. The scroll preview is a set of placeholder cards, not a series.</p>
-        )}
+        <h2>Connected accounts</h2>
+        <ul className="provider-list">
+          {SIGN_IN_PROVIDERS.map((provider) => (
+            <li key={provider.id}>
+              <p className="provider-name">{provider.label}</p>
+              <p className="hint">{linked.has(provider.id) ? "Connected" : "Not connected"}</p>
+            </li>
+          ))}
+        </ul>
+        <p>
+          <Link href="/account/connected">Manage connected accounts</Link>
+        </p>
+      </section>
+      <section className="panel">
+        <h2>Next</h2>
+        <p>Watch the scroll preview, or send a story idea.</p>
         <div className="hero-actions">
-          <Link className="button button-primary" href="/library">
-            Library
+          <Link className="button button-primary" href="/series/preview">
+            Preview
           </Link>
-          <Link className="button button-ghost" href="/series/preview">
-            Scroll preview
+          <Link className="button button-ghost" href="/suggestions">
+            Suggest a story
           </Link>
         </div>
       </section>
-      {VISIBLE_SOCIAL_LINKS.length > 0 ? (
-        <section className="panel">
-          <h2>Follow</h2>
-          <ul className="follow-list">
-            {VISIBLE_SOCIAL_LINKS.map((link) => (
-              <li key={link.name}>
-                <a href={link.href} rel="noreferrer">
-                  {link.name}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <form action={logout}>
+        <button className="button button-ghost" type="submit">
+          Sign out
+        </button>
+      </form>
     </main>
   );
 }

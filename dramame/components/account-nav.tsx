@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/account/password", label: "Password" },
   { href: "/account/connected", label: "Connected accounts" },
   { href: "/account/notifications", label: "Notifications" },
+  { href: "/account/auto-post", label: "Auto-post" },
   { href: "/account/delete", label: "Delete account" },
 ];
 

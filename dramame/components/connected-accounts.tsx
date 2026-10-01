@@ -12,6 +12,11 @@ const PROVIDERS = [
   { id: "apple", label: "Apple" },
 ] as const;
 
+const AUTO_POST = [
+  { id: "tiktok", label: "TikTok" },
+  { id: "instagram", label: "Instagram" },
+] as const;
+
 export function ConnectedAccounts({ flags, linked }: { flags: SocialFlags; linked: string[] }) {
   const [state, action, pending] = useActionState(disconnectAccount, initialFormState);
   return (
@@ -39,8 +44,8 @@ export function ConnectedAccounts({ flags, linked }: { flags: SocialFlags; linke
               ) : (
                 <button
                   type="button"
-                  className="button button-ghost"
-                  aria-disabled={configured ? undefined : true}
+                  className={configured ? "button button-ghost" : "button button-ghost is-unavailable"}
+                  disabled={!configured}
                   aria-describedby={configured ? undefined : stateId}
                   onClick={() => {
                     if (!configured) return;
@@ -54,6 +59,17 @@ export function ConnectedAccounts({ flags, linked }: { flags: SocialFlags; linke
             </li>
           );
         })}
+        {AUTO_POST.map((provider) => (
+          <li key={provider.id}>
+            <div>
+              <p className="provider-name">{provider.label}</p>
+              <p className="hint">For auto-post</p>
+            </div>
+            <button type="button" className="button button-ghost is-unavailable" disabled>
+              Not configured
+            </button>
+          </li>
+        ))}
       </ul>
     </div>
   );

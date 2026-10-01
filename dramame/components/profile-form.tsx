@@ -18,7 +18,8 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       </div>
       <div className="field">
         <label htmlFor="email">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" defaultValue={email} aria-invalid={state.fieldErrors.email ? true : undefined} aria-describedby={state.fieldErrors.email ? "email-error" : undefined} />
+        <input id="email" name="email" type="email" autoComplete="email" defaultValue={email} aria-invalid={state.fieldErrors.email ? true : undefined} aria-describedby={state.fieldErrors.email ? "email-hint email-error" : "email-hint"} />
+        <p id="email-hint" className="hint">Changing your email sends a new verification link.</p>
         {state.fieldErrors.email ? <p id="email-error" className="field-error" role="alert">{state.fieldErrors.email}</p> : null}
       </div>
       <button className="button button-primary" type="submit" disabled={pending} aria-busy={pending}>

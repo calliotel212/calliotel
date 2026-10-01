@@ -74,6 +74,7 @@ export async function savePreferencesAction(_prev: FormState, formData: FormData
     episodeAlerts: formData.get("episodeAlerts") === "on",
     productNews: formData.get("productNews") === "on",
     securityEmail: formData.get("securityEmail") === "on",
+    autoPostConfirmations: formData.get("autoPostConfirmations") === "on",
   });
   revalidatePath("/account/notifications");
   return { fieldErrors: {}, ok: true, message: "Preferences saved." };

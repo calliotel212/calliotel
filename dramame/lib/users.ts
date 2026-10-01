@@ -34,6 +34,7 @@ export type Preferences = {
   episodeAlerts: boolean;
   productNews: boolean;
   securityEmail: boolean;
+  autoPostConfirmations: boolean;
 };
 
 const VERIFY_TTL = 24 * 60 * 60 * 1000;
@@ -202,29 +203,46 @@ export async function changePassword(userId: string, input: { current: string; n
   return { ok: true };
 }
 
+const EMPTY_PREFERENCES: Preferences = {
+  episodeAlerts: true,
+  productNews: false,
+  securityEmail: true,
+  autoPostConfirmations: false,
+};
+
 export async function getPreferences(userId: string): Promise<Preferences> {
   const row = await getDb()
-    .prepare("SELECT episode_alerts, product_news, security_email FROM preferences WHERE user_id = ?")
-    .get(userId) as { episode_alerts: number; product_news: number; security_email: number } | undefined;
-  if (!row) return { episodeAlerts: true, productNews: false, securityEmail: true };
+    .prepare("SELECT episode_alerts, product_news, security_email, auto_post_confirmations FROM preferences WHERE user_id = ?")
+    .get(userId) as
+    | { episode_alerts: number; product_news: number; security_email: number; auto_post_confirmations: number }
+    | undefined;
+  if (!row) return EMPTY_PREFERENCES;
   return {
     episodeAlerts: row.episode_alerts === 1,
     productNews: row.product_news === 1,
     securityEmail: row.security_email === 1,
+    autoPostConfirmations: row.auto_post_confirmations === 1,
   };
 }
 
 export async function savePreferences(userId: string, prefs: Preferences) {
   await getDb()
     .prepare(
-      `INSERT INTO preferences (user_id, episode_alerts, product_news, security_email)
-       VALUES (?, ?, ?, ?)
+      `INSERT INTO preferences (user_id, episode_alerts, product_news, security_email, auto_post_confirmations)
+       VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(user_id) DO UPDATE SET
          episode_alerts = excluded.episode_alerts,
          product_news = excluded.product_news,
-         security_email = excluded.security_email`,
+         security_email = excluded.security_email,
+         auto_post_confirmations = excluded.auto_post_confirmations`,
     )
-    .run(userId, prefs.episodeAlerts ? 1 : 0, prefs.productNews ? 1 : 0, prefs.securityEmail ? 1 : 0);
+    .run(
+      userId,
+      prefs.episodeAlerts ? 1 : 0,
+      prefs.productNews ? 1 : 0,
+      prefs.securityEmail ? 1 : 0,
+      prefs.autoPostConfirmations ? 1 : 0,
+    );
 }
 
 export async function listOAuth(userId: string): Promise<{ provider: string }[]> {
