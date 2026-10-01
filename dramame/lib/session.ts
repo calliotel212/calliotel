@@ -9,7 +9,7 @@ export const getCurrentUser = cache(async (): Promise<UserRecord | null> => {
   const session = await auth();
   const id = session?.user?.id;
   if (!id) return null;
-  return findUserById(id);
+  return await findUserById(id);
 });
 
 export async function requireUser(): Promise<UserRecord> {

@@ -28,7 +28,7 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
   if (emailError) fieldErrors.email = emailError;
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  const result = updateProfile(user.id, { name, email });
+  const result = await updateProfile(user.id, { name, email });
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
 
   let devUrl: string | undefined;
@@ -36,7 +36,7 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
   if (result.verifyToken) {
     const origin = await appOrigin();
     const url = `${origin}/verify-email?token=${result.verifyToken}`;
-    recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
+    await recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
     if (isDevRuntime()) devUrl = url;
     try {
       await sendEmail({ to: result.email, kind: "verify", url });
@@ -63,14 +63,14 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
   const confirm = field(formData, "confirm");
   const fieldErrors = validateNewPassword(password, confirm);
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  const result = changePassword(user.id, { current, next: password });
+  const result = await changePassword(user.id, { current, next: password });
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
   return { fieldErrors: {}, ok: true, message: user.passwordHash ? "Password updated." : "Password set." };
 }
 
 export async function savePreferencesAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  savePreferences(user.id, {
+  await savePreferences(user.id, {
     episodeAlerts: formData.get("episodeAlerts") === "on",
     productNews: formData.get("productNews") === "on",
     securityEmail: formData.get("securityEmail") === "on",
@@ -83,7 +83,7 @@ export async function disconnectAccount(_prev: FormState, formData: FormData): P
   const user = await requireUser();
   const provider = field(formData, "provider");
   if (!isOAuthProvider(provider)) return { fieldErrors: {}, formError: "Unknown provider." };
-  const result = disconnectProvider(user.id, provider);
+  const result = await disconnectProvider(user.id, provider);
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
   revalidatePath("/account/connected");
   return { fieldErrors: {}, ok: true, message: "Disconnected." };
@@ -94,7 +94,7 @@ export async function deleteAccount(_prev: FormState, formData: FormData): Promi
   const confirm = field(formData, "confirm").trim().toLowerCase();
   if (!confirm) return { fieldErrors: { confirm: "Type your email to confirm." } };
   if (confirm !== user.email) return { fieldErrors: { confirm: "That email doesn’t match this account." } };
-  deleteUser(user.id);
+  await deleteUser(user.id);
   await signOut({ redirectTo: "/?deleted=1" });
   return { fieldErrors: {} };
 }

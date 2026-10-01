@@ -53,8 +53,8 @@ async function AdminInbox({ allowed }: { allowed: string }) {
   if (!user) redirect("/login?callbackUrl=/admin");
   if (user.email.trim().toLowerCase() !== allowed) return <ClosedPage />;
 
-  const messages = listMessages();
-  const suggestions = listSuggestions();
+  const messages = await listMessages();
+  const suggestions = await listSuggestions();
 
   return (
     <main className="narrow page">

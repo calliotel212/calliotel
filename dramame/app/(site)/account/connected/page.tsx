@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Connected accounts" };
 
 export default async function ConnectedPage() {
   const user = await requireUser();
-  const linked = listOAuth(user.id).map((row) => row.provider);
+  const linked = (await listOAuth(user.id)).map((row) => row.provider);
   return (
     <main className="page">
       <h1>Connected accounts</h1>

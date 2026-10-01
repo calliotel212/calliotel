@@ -10,6 +10,6 @@ export async function sendContact(_prev: FormState, formData: FormData): Promise
   const message = field(formData, "message");
   const fieldErrors = validateContact({ name, email, message });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  saveMessage({ name, email, message });
+  await saveMessage({ name, email, message });
   return { fieldErrors: {}, ok: true, message: "Message saved on this server. You can also write to hello@dramame.net." };
 }

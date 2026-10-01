@@ -9,6 +9,6 @@ export async function savePreviewProgress(highestOpened: number) {
   const user = await getCurrentUser();
   if (!user) return;
   if (!Number.isInteger(highestOpened) || highestOpened < 1 || highestOpened > PREVIEW_EPISODES.length) return;
-  saveProgress(user.id, PREVIEW_SERIES_ID, highestOpened);
+  await saveProgress(user.id, PREVIEW_SERIES_ID, highestOpened);
   revalidatePath("/library");
 }

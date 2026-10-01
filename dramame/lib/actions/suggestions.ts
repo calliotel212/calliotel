@@ -9,7 +9,7 @@ export async function sendSuggestion(_prev: FormState, formData: FormData): Prom
   const email = field(formData, "email");
   const fieldErrors = validateSuggestion({ idea, email });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  saveSuggestion({ idea, email });
+  await saveSuggestion({ idea, email });
   return {
     fieldErrors: {},
     ok: true,

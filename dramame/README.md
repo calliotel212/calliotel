@@ -14,7 +14,7 @@ npm run dev
 
 Open http://localhost:3000.
 
-Email and password work with no API keys. Accounts are stored in `dramame/data/dramame.db` (SQLite, created on first use). Passwords are scrypt hashes.
+Email and password work with no API keys. With `DATABASE_URL` unset, accounts are stored in `data/dramame.db` (SQLite, created on first use). Passwords are scrypt hashes. See Database below for Postgres.
 
 ```bash
 npm test
@@ -36,8 +36,17 @@ Copy `.env.example` to `.env.local` if you want to set values. `next dev` runs w
 | `ADMIN_EMAIL` | Signed-in email allowed to open `/admin`. Leave blank and that page stays unavailable. |
 | `RESEND_API_KEY` | Resend API key. Leave blank and mail is not sent. |
 | `EMAIL_FROM` | Verified sender address, for example `noreply@dramame.net`. |
+| `DATABASE_URL` | Postgres connection string. Required in production. Leave blank locally to use SQLite. |
 
 If a provider’s id or secret is missing, its button stays on **Not configured** and does not start OAuth. Instagram is not a login. Footer and account follow links stay hidden until `lib/social.ts` has real profile URLs.
+
+## Database
+
+`DATABASE_URL` is a Postgres connection string. Production uses Postgres. On the first request that uses the database, the app creates its tables. There is no migration command, and `npm run build` does not migrate.
+
+Local `npm run dev` uses SQLite at `data/dramame.db` when `DATABASE_URL` is unset. That file is created on first use.
+
+To use Postgres on your machine, set `DATABASE_URL` in `.env.local` and restart `npm run dev`.
 
 ## Email
 

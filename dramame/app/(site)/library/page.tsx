@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Library" };
 
 export default async function LibraryPage() {
   const user = await getCurrentUser();
-  const opened = user ? getProgress(user.id, PREVIEW_SERIES_ID) : 0;
+  const opened = user ? await getProgress(user.id, PREVIEW_SERIES_ID) : 0;
   return (
     <main className="narrow page">
       <p className="eyebrow">Library</p>

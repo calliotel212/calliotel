@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default async function PreviewPage() {
   const user = await getCurrentUser();
-  const initialHighest = user ? getProgress(user.id, PREVIEW_SERIES_ID) : 0;
+  const initialHighest = user ? await getProgress(user.id, PREVIEW_SERIES_ID) : 0;
   return (
     <div className="watch">
       <a className="skip" href="#reel">

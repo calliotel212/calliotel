@@ -27,7 +27,7 @@ const providers: NextAuthConfig["providers"] = [
       const email = String(credentials?.email ?? "");
       const password = String(credentials?.password ?? "");
       const remember = String(credentials?.remember ?? "") === "yes";
-      const result = authenticate(email, password);
+      const result = await authenticate(email, password);
       if (result.status !== "ok") return null;
       return {
         id: result.user.id,
@@ -60,7 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user, account }) {
       if (!account || account.provider === "credentials") return true;
       if (!isOAuthProvider(account.provider) || !user.email) return false;
-      upsertOAuthUser({
+      await upsertOAuthUser({
         email: user.email,
         name: user.name ?? "Viewer",
         provider: account.provider,
@@ -71,8 +71,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, account }) {
       if (account && account.provider !== "credentials" && isOAuthProvider(account.provider)) {
         const local =
-          findUserByProvider(account.provider, account.providerAccountId) ??
-          (user?.email ? findUserByEmail(user.email) : null);
+          (await findUserByProvider(account.provider, account.providerAccountId)) ??
+          (user?.email ? await findUserByEmail(user.email) : null);
         if (local) {
           token.sub = local.id;
           token.email = local.email;

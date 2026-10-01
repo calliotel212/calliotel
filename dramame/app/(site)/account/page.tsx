@@ -11,8 +11,8 @@ export const metadata: Metadata = { title: "Account" };
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const opened = getProgress(user.id, PREVIEW_SERIES_ID);
-  const verifyUrl = user.emailVerified ? null : latestDevLink(user.id, "verify");
+  const opened = await getProgress(user.id, PREVIEW_SERIES_ID);
+  const verifyUrl = user.emailVerified ? null : await latestDevLink(user.id, "verify");
   return (
     <main className="page">
       <p className="eyebrow">Account</p>

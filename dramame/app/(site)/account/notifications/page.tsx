@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Notifications" };
 
 export default async function NotificationsPage() {
   const user = await requireUser();
-  const prefs = getPreferences(user.id);
+  const prefs = await getPreferences(user.id);
   return (
     <main className="page">
       <h1>Notifications</h1>

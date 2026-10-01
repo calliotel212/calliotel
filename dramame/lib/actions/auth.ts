@@ -26,7 +26,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const fieldErrors = validateLogin({ email, password });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  const result = authenticate(email, password);
+  const result = await authenticate(email, password);
   if (result.status === "unknown") return { fieldErrors: {}, formError: "No account uses that email." };
   if (result.status === "social") {
     return { fieldErrors: {}, formError: "That email uses social sign-in. Continue with the provider, or reset the password to set one." };
@@ -56,12 +56,12 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
   const fieldErrors = validateSignup({ name, email, password, confirm, terms });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
-  if (findUserByEmail(email)) return { fieldErrors: {}, formError: "An account already uses that email." };
+  if (await findUserByEmail(email)) return { fieldErrors: {}, formError: "An account already uses that email." };
 
-  const created = createUser({ name, email, password });
+  const created = await createUser({ name, email, password });
   const origin = await appOrigin();
   const devUrl = `${origin}/verify-email?token=${created.verifyToken}`;
-  recordDevLink({ userId: created.user.id, email: created.user.email, kind: "verify", url: devUrl });
+  await recordDevLink({ userId: created.user.id, email: created.user.email, kind: "verify", url: devUrl });
   try {
     await sendEmail({ to: created.user.email, kind: "verify", url: devUrl });
   } catch {
@@ -95,12 +95,12 @@ export async function forgotPassword(_prev: FormState, formData: FormData): Prom
   const emailError = validateEmail(email);
   if (emailError) return { fieldErrors: { email: emailError } };
 
-  const result = createResetToken(email);
+  const result = await createResetToken(email);
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
 
   const origin = await appOrigin();
   const url = `${origin}/reset-password?token=${result.token}`;
-  recordDevLink({ userId: result.user.id, email: result.user.email, kind: "reset", url });
+  await recordDevLink({ userId: result.user.id, email: result.user.email, kind: "reset", url });
   try {
     await sendEmail({ to: result.user.email, kind: "reset", url });
   } catch {
@@ -125,7 +125,7 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
   if (!token) return { fieldErrors: {}, formError: "This reset link is invalid or expired." };
   const fieldErrors = validateNewPassword(password, confirm);
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  const result = resetPassword(token, password);
+  const result = await resetPassword(token, password);
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
   return { fieldErrors: {}, ok: true, message: "Password updated. You can log in." };
 }
@@ -133,7 +133,7 @@ export async function resetPasswordAction(_prev: FormState, formData: FormData):
 export async function verifyEmailAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const token = field(formData, "token");
   if (!token) return { fieldErrors: {}, formError: "This verification link is invalid or expired." };
-  const result = verifyEmailToken(token);
+  const result = await verifyEmailToken(token);
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
   return { fieldErrors: {}, ok: true, message: "Email verified." };
 }
@@ -141,11 +141,11 @@ export async function verifyEmailAction(_prev: FormState, formData: FormData): P
 export async function resendVerification(_prev: FormState, _formData: FormData): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) return { fieldErrors: {}, formError: "Log in to resend verification." };
-  const result = issueVerification(user.id);
+  const result = await issueVerification(user.id);
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
   const origin = await appOrigin();
   const url = `${origin}/verify-email?token=${result.token}`;
-  recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
+  await recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
   try {
     await sendEmail({ to: result.email, kind: "verify", url });
   } catch {
