@@ -1,16 +1,22 @@
 import Link from "next/link";
+import { BrandLockup } from "@/components/brand-lockup";
 import { SOCIAL_LINKS } from "@/lib/social";
 
 export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="footer-brand">
-        <p className="wordmark">dramame</p>
-        <p>Vertical short stories. One minute at a time.</p>
+        <BrandLockup />
+        <p>Vertical short stories on dramame.net. One minute at a time.</p>
       </div>
       <div>
         <p className="eyebrow">Explore</p>
         <ul>
+          <li><Link href="/genres">Genres</Link></li>
+          <li><Link href="/how-it-works">How it works</Link></li>
+          <li><Link href="/pricing">Pricing</Link></li>
+          <li><Link href="/faq">FAQ</Link></li>
+          <li><Link href="/suggestions">Suggest a story</Link></li>
           <li><Link href="/about">About</Link></li>
           <li><Link href="/help">Help</Link></li>
           <li><Link href="/contact">Contact</Link></li>

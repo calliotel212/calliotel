@@ -6,7 +6,7 @@ export default function RootError({ reset }: { error: Error & { digest?: string 
   return (
     <main className="narrow page">
       <Link className="wordmark" href="/">
-        dramame
+        Drama Me
       </Link>
       <h1>Something went wrong</h1>
       <p>This page did not finish loading.</p>

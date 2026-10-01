@@ -1,9 +1,9 @@
+import { PopcornLoader } from "@/components/popcorn-loader";
+
 export default function Loading() {
   return (
-    <main className="narrow page">
-      <p className="eyebrow" role="status">
-        Loading…
-      </p>
+    <main className="loader-page">
+      <PopcornLoader size="lg" label="Loading" />
     </main>
   );
 }

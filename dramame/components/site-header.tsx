@@ -1,14 +1,12 @@
-import Link from "next/link";
 import { auth } from "@/auth";
+import { BrandLockup } from "@/components/brand-lockup";
 import { SiteNav } from "@/components/site-nav";
 
 export async function SiteHeader() {
   const session = await auth();
   return (
     <header className="site-header">
-      <Link href="/" className="wordmark">
-        dramame
-      </Link>
+      <BrandLockup />
       <SiteNav isAuthed={Boolean(session?.user)} />
     </header>
   );
