@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { connection } from "next/server";
+import { redirect } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getCurrentUser } from "@/lib/session";
@@ -25,13 +26,23 @@ function formatWhen(ms: number) {
   }).format(new Date(ms));
 }
 
-export default function AdminPage() {
+function ClosedPage() {
+  return (
+    <main className="narrow page">
+      <p className="eyebrow">Admin</p>
+      <h1>Not configured</h1>
+      <p className="lede">This page is closed.</p>
+    </main>
+  );
+}
+
+export default async function AdminPage() {
+  await connection();
   const allowed = allowedAdminEmail();
-  if (!allowed) notFound();
   return (
     <>
       <SiteHeader />
-      <AdminInbox allowed={allowed} />
+      {allowed ? <AdminInbox allowed={allowed} /> : <ClosedPage />}
       <SiteFooter />
     </>
   );
@@ -40,7 +51,7 @@ export default function AdminPage() {
 async function AdminInbox({ allowed }: { allowed: string }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/admin");
-  if (user.email.trim().toLowerCase() !== allowed) notFound();
+  if (user.email.trim().toLowerCase() !== allowed) return <ClosedPage />;
 
   const messages = listMessages();
   const suggestions = listSuggestions();
