@@ -5,7 +5,9 @@ import { getDb } from "@/lib/db";
 import { isDevRuntime } from "@/lib/form-state";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import type { OAuthProvider } from "@/lib/social";
+import { normalizePlan, type PlanId } from "@/lib/plans";
 import { hashToken, newToken } from "@/lib/tokens";
+import { asTimestamp } from "@/lib/time";
 
 export type UserRecord = {
   id: string;
@@ -82,17 +84,23 @@ async function storeVerification(userId: string, now: number): Promise<string> {
   return token;
 }
 
-export async function createUser(input: { name: string; email: string; password: string }): Promise<{ user: UserRecord; verifyToken: string }> {
+export async function createUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  plan?: string | null;
+}): Promise<{ user: UserRecord; verifyToken: string }> {
   const now = Date.now();
   const id = randomUUID();
   const email = input.email.trim().toLowerCase();
   const token = newToken();
+  const plan: PlanId | null = normalizePlan(input.plan);
   const db = getDb();
   await db.prepare(
     `INSERT INTO users (
-      id, name, email, password_hash, email_verified, verification_token, verification_expires, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?)`,
-  ).run(id, input.name.trim(), email, hashPassword(input.password), hashToken(token), now + VERIFY_TTL, now, now);
+      id, name, email, password_hash, email_verified, verification_token, verification_expires, created_at, updated_at, plan
+    ) VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+  ).run(id, input.name.trim(), email, hashPassword(input.password), hashToken(token), now + VERIFY_TTL, now, now, plan);
   await db.prepare(
     "INSERT INTO preferences (user_id, episode_alerts, product_news, security_email) VALUES (?, 1, 0, 1)",
   ).run(id);
@@ -306,6 +314,7 @@ export async function deleteUser(userId: string) {
     if (email) {
       await db.prepare("DELETE FROM suggestions WHERE email IS NOT NULL AND lower(email) = ?").run(email);
       await db.prepare("DELETE FROM messages WHERE lower(email) = ?").run(email);
+      await db.prepare("DELETE FROM studio_requests WHERE lower(email) = ?").run(email);
     }
     await db.prepare("DELETE FROM users WHERE id = ?").run(userId);
     await db.exec("COMMIT");
@@ -321,6 +330,7 @@ export type StoredMessage = {
   email: string;
   body: string;
   createdAt: number;
+  readAt: number | null;
 };
 
 export type StoredSuggestion = {
@@ -328,30 +338,33 @@ export type StoredSuggestion = {
   idea: string;
   email: string | null;
   createdAt: number;
+  readAt: number | null;
 };
 
 export async function listMessages(): Promise<StoredMessage[]> {
   const rows = await getDb()
-    .prepare("SELECT id, name, email, body, created_at FROM messages ORDER BY created_at DESC")
-    .all() as { id: string; name: string; email: string; body: string; created_at: number }[];
+    .prepare("SELECT id, name, email, body, created_at, read_at FROM messages ORDER BY created_at DESC")
+    .all() as { id: string; name: string; email: string; body: string; created_at: number; read_at: number | null }[];
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
     email: row.email,
     body: row.body,
-    createdAt: row.created_at,
+    createdAt: asTimestamp(row.created_at) ?? 0,
+    readAt: asTimestamp(row.read_at),
   }));
 }
 
 export async function listSuggestions(): Promise<StoredSuggestion[]> {
   const rows = await getDb()
-    .prepare("SELECT id, idea, email, created_at FROM suggestions ORDER BY created_at DESC")
-    .all() as { id: string; idea: string; email: string | null; created_at: number }[];
+    .prepare("SELECT id, idea, email, created_at, read_at FROM suggestions ORDER BY created_at DESC")
+    .all() as { id: string; idea: string; email: string | null; created_at: number; read_at: number | null }[];
   return rows.map((row) => ({
     id: row.id,
     idea: row.idea,
     email: row.email,
-    createdAt: row.created_at,
+    createdAt: asTimestamp(row.created_at) ?? 0,
+    readAt: asTimestamp(row.read_at),
   }));
 }
 

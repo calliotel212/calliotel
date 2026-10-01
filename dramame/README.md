@@ -69,14 +69,14 @@ Production does not print those links.
 ## Routes
 
 - `/` landing
-- `/genres` `/how-it-works` `/pricing` `/faq` `/suggestions`
+- `/genres` `/studio` `/how-it-works` `/pricing` `/faq` `/suggestions`
 - `/signup` `/login` `/forgot-password` `/reset-password` `/verify-email`
 - `/account` `/account/profile` `/account/password` `/account/connected` `/account/notifications` `/account/delete`
 - `/help` `/contact` `/about` `/privacy` `/terms` `/cookies`
 - `/search` `/library` `/series/preview`
-- `/admin` read-only contact messages and story suggestions, only for the signed-in `ADMIN_EMAIL`
+- `/admin` dashboard for the signed-in `ADMIN_EMAIL`, plus `/admin/users`, `/admin/suggestions`, `/admin/messages`, `/admin/queue`, and `/admin/requests`. Anyone else sees a 404-style page. Leave `ADMIN_EMAIL` blank and those pages stay unavailable.
 - unknown paths use the 404 page
 
 Contact address on the contact page: hello@dramame.net.
 
-There are no payments, coins, or a paywall.
+Plans are listed on `/pricing`. No payment is taken yet. There is no checkout.

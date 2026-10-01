@@ -8,14 +8,16 @@ import { PopcornLoader } from "@/components/popcorn-loader";
 import { PasswordField } from "@/components/password-field";
 import { SocialButtons } from "@/components/social-buttons";
 import { initialFormState } from "@/lib/form-state";
+import type { PlanId } from "@/lib/plans";
 import type { SocialFlags } from "@/lib/social";
 
 const HINT = "At least 8 characters, with a letter and a number.";
 
-export function SignupForm({ flags }: { flags: SocialFlags }) {
+export function SignupForm({ flags, plan = null }: { flags: SocialFlags; plan?: PlanId | null }) {
   const [state, action, pending] = useActionState(signup, initialFormState);
   return (
     <form action={action} className="form" noValidate aria-busy={pending}>
+      {plan ? <input type="hidden" name="plan" value={plan} /> : null}
       {state.formError ? <p className="form-error" role="alert">{state.formError}</p> : null}
       <div className="field">
         <label htmlFor="name">Name</label>

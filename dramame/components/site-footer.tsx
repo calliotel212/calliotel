@@ -15,6 +15,7 @@ export function SiteFooter() {
           <li><Link href="/genres">Genres</Link></li>
           <li><Link href="/how-it-works">How it works</Link></li>
           <li><Link href="/pricing">Pricing</Link></li>
+          <li><Link href="/pricing">Plans</Link></li>
           <li><Link href="/faq">FAQ</Link></li>
           <li><Link href="/suggestions">Suggest a story</Link></li>
           <li><Link href="/about">About</Link></li>

@@ -1,40 +1,31 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { PLANS } from "@/lib/plans";
 
 export const metadata: Metadata = { title: "Pricing" };
-
-const TIERS = [
-  {
-    name: "Look around",
-    amount: "Draft $0",
-    detail: "An account and the placeholder scroll preview. This is not a charge.",
-  },
-  {
-    name: "One story",
-    amount: "Draft $6",
-    detail: "A draft amount for a finished story of 60–75 episodes. Not for sale.",
-  },
-  {
-    name: "A longer stay",
-    amount: "Draft $12",
-    detail: "A draft amount for more than one story. Not for sale.",
-  },
-];
 
 export default function PricingPage() {
   return (
     <main className="page">
-      <p className="eyebrow">Pricing</p>
-      <h1>Draft amounts only.</h1>
-      <p className="lede">
-        These figures are a layout draft. Drama Me does not charge a card, sell coins, or lock episodes behind payment.
+      <p className="eyebrow">Plans</p>
+      <h1>Three ways to watch.</h1>
+      <p className="lede">Pick a plan for your account. Prices are in US dollars.</p>
+      <p className="form-note" role="note">
+        No payment is taken yet. Choosing a plan does not charge a card, start a checkout, or lock the site.
       </p>
       <div className="price-grid">
-        {TIERS.map((tier) => (
-          <article key={tier.name} className="price-card">
-            <p className="draft-tag">Draft</p>
-            <h2>{tier.name}</h2>
-            <p className="price-amount">{tier.amount}</p>
-            <p>{tier.detail}</p>
+        {PLANS.map((plan) => (
+          <article key={plan.id} className="price-card">
+            <h2>{plan.name}</h2>
+            <p className="price-amount">{plan.price}</p>
+            <ul className="price-includes">
+              {plan.includes.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <Link className="button button-primary" href={`/signup?plan=${plan.id}`}>
+              Choose {plan.name}
+            </Link>
           </article>
         ))}
       </div>

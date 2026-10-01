@@ -8,8 +8,10 @@ import { logout } from "@/lib/actions/auth";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/genres", label: "Genres" },
+  { href: "/studio", label: "Studio" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/pricing", label: "Plans" },
   { href: "/faq", label: "FAQ" },
 ];
 
@@ -42,7 +44,7 @@ export function SiteNav({ isAuthed }: { isAuthed: boolean }) {
   const items = (
     <>
       {LINKS.map((link) => (
-        <Link key={link.href} href={link.href} className={itemClass(link.href)} aria-current={pathname === link.href ? "page" : undefined}>
+        <Link key={link.label} href={link.href} className={itemClass(link.href)} aria-current={pathname === link.href ? "page" : undefined}>
           {link.label}
         </Link>
       ))}

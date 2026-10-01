@@ -25,7 +25,7 @@ export const FAQ = [
   },
   {
     q: "Do I need to pay?",
-    a: "Nothing is charged. The pricing page shows draft amounts only. There is no coin shop and no paywall.",
+    a: "Plans are listed on the pricing page. No payment is taken yet. There is no checkout, coin shop, or paywall.",
   },
   {
     q: "Can I suggest a story?",

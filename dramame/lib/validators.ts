@@ -88,6 +88,19 @@ export function validateSuggestion(input: { idea: string; email: string }): Fiel
   return fieldErrors;
 }
 
+export function validateStudioRequest(input: { name: string; email: string; idea: string }): FieldErrors {
+  const fieldErrors: FieldErrors = {};
+  const nameError = validateName(input.name);
+  if (nameError) fieldErrors.name = nameError;
+  const emailError = validateEmail(input.email);
+  if (emailError) fieldErrors.email = emailError;
+  const idea = input.idea.trim();
+  if (!idea) fieldErrors.idea = "Enter a one-line story idea.";
+  else if (/[\r\n]/.test(idea)) fieldErrors.idea = "Keep the idea to one line.";
+  else if (idea.length > 200) fieldErrors.idea = "Use 200 characters or fewer.";
+  return fieldErrors;
+}
+
 export function safeNextPath(value: string | null | undefined, fallback = "/account"): string {
   if (!value) return fallback;
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;

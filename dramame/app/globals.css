@@ -286,6 +286,14 @@ p { margin: 0 0 0.8rem; }
   margin: 0 0 0.4rem;
 }
 
+.price-card { display: flex; flex-direction: column; padding-bottom: 1rem; }
+
+.price-includes { margin: 0.2rem 0 1rem; padding-left: 1.1rem; }
+
+.price-includes li { margin: 0.2rem 0; }
+
+.price-card .button { margin-top: auto; align-self: flex-start; }
+
 .steps { list-style: none; margin: 1.2rem 0 1.6rem; padding: 0; display: grid; gap: 1rem; }
 
 .steps li { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; align-items: start; }
@@ -665,6 +673,8 @@ select { color-scheme: dark; }
 
 .account-nav a[aria-current="page"] { color: var(--highlight-gold); }
 
+.account-admin { font-size: 0.82rem; margin: 0.15rem 0 0.7rem; }
+
 .panel, .library-card, .empty {
   margin-top: 1.4rem;
   padding: 1.1rem 0 0;
@@ -737,6 +747,34 @@ select { color-scheme: dark; }
 .admin-list li { border-top: 1px solid var(--line); padding-top: 0.9rem; }
 
 .admin-list p { margin: 0.2rem 0; white-space: pre-wrap; }
+
+.admin-nav { display: flex; flex-wrap: wrap; gap: 0.35rem 1rem; margin: 0 0 1.4rem; }
+
+.admin-nav a { text-decoration: none; }
+
+.admin-nav a[aria-current="page"] { color: var(--highlight-gold); }
+
+.admin-counts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin: 0 0 1.2rem;
+}
+
+.admin-counts div { margin: 0; padding: 0.85rem 0.15rem 0.15rem; border-top: 1px solid var(--line); }
+
+.admin-counts dt {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-counts dd {
+  margin: 0.25rem 0 0;
+  font-family: var(--font-display), Georgia, serif;
+  font-size: 1.8rem;
+}
 
 .faq { display: grid; gap: 0.6rem; margin: 1.2rem 0 1.6rem; }
 
@@ -846,7 +884,7 @@ select { color-scheme: dark; }
 }
 
 @media (max-width: 860px) {
-  .hero, .facts, .auth-split, .account, .site-footer, .points, .price-grid, .genre-list { grid-template-columns: 1fr; }
+  .hero, .facts, .auth-split, .account, .site-footer, .points, .price-grid, .genre-list, .admin-counts { grid-template-columns: 1fr; }
   .facts div + div { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); }
   .auth-poster { min-height: 14rem; border-right: 0; border-bottom: 1px solid var(--line); }
   .nav-desktop { display: none; }

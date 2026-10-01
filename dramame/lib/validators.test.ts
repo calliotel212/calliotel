@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup, validateSuggestion } from "./validators.ts";
+import { normalizePlan } from "./plans.ts";
+import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup, validateStudioRequest, validateSuggestion } from "./validators.ts";
 
 test("email validation covers empty and invalid", () => {
   assert.equal(validateEmail(""), "Enter your email.");
@@ -40,6 +41,21 @@ test("suggestion email is optional", () => {
   assert.deepEqual(validateSuggestion({ idea: "A lighthouse keeper who loses one minute every night.", email: "" }), {});
   assert.equal(validateSuggestion({ idea: "too short", email: "" }).idea, "Use at least 10 characters.");
   assert.ok(validateSuggestion({ idea: "A lighthouse keeper who loses one minute every night.", email: "nope" }).email);
+});
+
+test("studio request keeps the idea to one line", () => {
+  assert.deepEqual(validateStudioRequest({ name: "Ada", email: "ada@dramame.net", idea: "A clock that eats the last minute of the day." }), {});
+  assert.equal(validateStudioRequest({ name: "", email: "bad", idea: "" }).name, "Enter your name.");
+  assert.ok(validateStudioRequest({ name: "Ada", email: "bad", idea: "A clock." }).email);
+  assert.equal(validateStudioRequest({ name: "Ada", email: "ada@dramame.net", idea: "line one\nline two" }).idea, "Keep the idea to one line.");
+});
+
+test("plan ids are free, fan, and studio", () => {
+  assert.equal(normalizePlan("fan"), "fan");
+  assert.equal(normalizePlan(" Studio "), "studio");
+  assert.equal(normalizePlan("enterprise"), null);
+  assert.equal(normalizePlan(""), null);
+  assert.equal(normalizePlan(undefined), null);
 });
 
 test("safeNextPath blocks off-site redirects", () => {

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
-import { redirect } from "next/navigation";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
-import { getCurrentUser } from "@/lib/session";
-import { listMessages, listSuggestions } from "@/lib/users";
+import Link from "next/link";
+import { AdminAllowed, AdminDenied } from "@/components/admin-screen";
+import { guardAdmin } from "@/lib/admin";
+import { adminCounts } from "@/lib/admin-data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,90 +11,58 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-function allowedAdminEmail(): string | null {
-  const value = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-  return value || null;
-}
-
-function formatWhen(ms: number) {
-  return new Intl.DateTimeFormat("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(ms));
-}
-
-function ClosedPage() {
-  return (
-    <main className="narrow page">
-      <p className="eyebrow">Admin</p>
-      <h1>Not configured</h1>
-      <p className="lede">This page is closed.</p>
-    </main>
-  );
-}
+const QUEUE_LABELS = [
+  ["draft", "Draft"],
+  ["approved", "Approved"],
+  ["posted", "Posted"],
+  ["failed", "Failed"],
+] as const;
 
 export default async function AdminPage() {
-  await connection();
-  const allowed = allowedAdminEmail();
-  return (
-    <>
-      <SiteHeader />
-      {allowed ? <AdminInbox allowed={allowed} /> : <ClosedPage />}
-      <SiteFooter />
-    </>
-  );
-}
-
-async function AdminInbox({ allowed }: { allowed: string }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login?callbackUrl=/admin");
-  if (user.email.trim().toLowerCase() !== allowed) return <ClosedPage />;
-
-  const messages = await listMessages();
-  const suggestions = await listSuggestions();
+  const admin = await guardAdmin();
+  if (!admin) return <AdminDenied />;
+  const counts = await adminCounts();
+  const queueTotal = QUEUE_LABELS.reduce((sum, [status]) => sum + counts.queue[status], 0);
 
   return (
-    <main className="narrow page">
-      <p className="eyebrow">Admin</p>
-      <h1>Inbox</h1>
-      <p className="lede">Contact messages and story suggestions. This page is read-only.</p>
-
-      <section className="panel" aria-labelledby="admin-messages">
-        <h2 id="admin-messages">Contact messages</h2>
-        {messages.length === 0 ? (
-          <p>No contact messages.</p>
-        ) : (
-          <ul className="admin-list">
-            {messages.map((message) => (
-              <li key={message.id}>
-                <p>
-                  <strong>{message.name}</strong> · {message.email}
-                </p>
-                <p className="hint">{formatWhen(message.createdAt)} UTC</p>
-                <p>{message.body}</p>
-              </li>
-            ))}
-          </ul>
-        )}
+    <AdminAllowed title="Dashboard" lede="Counts for this server. The lists are read-only except where a row can be marked read.">
+      <dl className="admin-counts">
+        <div>
+          <dt>Users</dt>
+          <dd>{counts.users}</dd>
+        </div>
+        <div>
+          <dt>Verified users</dt>
+          <dd>{counts.verifiedUsers}</dd>
+        </div>
+        <div>
+          <dt>Suggestions</dt>
+          <dd>{counts.suggestions}</dd>
+        </div>
+        <div>
+          <dt>Contact messages</dt>
+          <dd>{counts.messages}</dd>
+        </div>
+      </dl>
+      <section className="panel" aria-labelledby="admin-queue-counts">
+        <h2 id="admin-queue-counts">Queue by status</h2>
+        <ul className="admin-list">
+          {QUEUE_LABELS.map(([status, label]) => (
+            <li key={status}>
+              <p>
+                {label}: {counts.queue[status]}
+              </p>
+            </li>
+          ))}
+        </ul>
+        <p className="hint">Total queue rows: {queueTotal}</p>
+        <p>
+          <Link href="/admin/queue">Open the queue</Link>
+        </p>
       </section>
-
-      <section className="panel" aria-labelledby="admin-suggestions">
-        <h2 id="admin-suggestions">Story suggestions</h2>
-        {suggestions.length === 0 ? (
-          <p>No story suggestions.</p>
-        ) : (
-          <ul className="admin-list">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.id}>
-                <p>{suggestion.email ?? "No email"}</p>
-                <p className="hint">{formatWhen(suggestion.createdAt)} UTC</p>
-                <p>{suggestion.idea}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-    </main>
+      <p>
+        <Link href="/admin/requests">Studio requests</Link> ({counts.requests})
+      </p>
+    </AdminAllowed>
   );
 }

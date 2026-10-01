@@ -4,6 +4,7 @@ import { unstable_rethrow } from "next/navigation";
 import { signIn, signOut } from "@/auth";
 import { field, initialFormState, isDevRuntime, type FormState } from "@/lib/form-state";
 import { appOrigin } from "@/lib/origin";
+import { normalizePlan } from "@/lib/plans";
 import { safeNextPath, validateEmail, validateLogin, validateNewPassword, validateSignup } from "@/lib/validators";
 import {
   authenticate,
@@ -53,12 +54,13 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
   const password = field(formData, "password");
   const confirm = field(formData, "confirm");
   const terms = formData.get("terms") === "on";
+  const plan = normalizePlan(field(formData, "plan"));
   const fieldErrors = validateSignup({ name, email, password, confirm, terms });
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
   if (await findUserByEmail(email)) return { fieldErrors: {}, formError: "An account already uses that email." };
 
-  const created = await createUser({ name, email, password });
+  const created = await createUser({ name, email, password, plan });
   const origin = await appOrigin();
   const devUrl = `${origin}/verify-email?token=${created.verifyToken}`;
   await recordDevLink({ userId: created.user.id, email: created.user.email, kind: "verify", url: devUrl });

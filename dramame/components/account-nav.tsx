@@ -14,7 +14,7 @@ const LINKS = [
   { href: "/account/delete", label: "Delete account" },
 ];
 
-export function AccountNav({ name, email }: { name: string; email: string }) {
+export function AccountNav({ name, email, showAdmin = false }: { name: string; email: string; showAdmin?: boolean }) {
   const pathname = usePathname();
   return (
     <aside className="account-nav">
@@ -31,6 +31,11 @@ export function AccountNav({ name, email }: { name: string; email: string }) {
           );
         })}
       </nav>
+      {showAdmin ? (
+        <Link href="/admin" className="account-admin">
+          Admin
+        </Link>
+      ) : null}
       <form action={logout}>
         <button type="submit" className="text-button">
           Log out

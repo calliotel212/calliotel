@@ -19,7 +19,7 @@ export default function TermsPage() {
       <h2>Acceptable use</h2>
       <p>Do not break the site, probe other people’s accounts, or upload anything through the contact form that you do not have the right to send. The contact form is for notes to Drama Me.</p>
       <h2>No payments</h2>
-      <p>There is nothing to buy here. No coins, passes, or paywall.</p>
+      <p>Plans are listed on the pricing page. No payment is taken yet. There is no checkout, and there are no coins or passes.</p>
       <h2>Changes</h2>
       <p>The site can change as the first series is chosen. These terms can be updated on this page. If you keep using Drama Me after that, the new terms apply.</p>
       <h2>Contact</h2>
