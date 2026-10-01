@@ -11,7 +11,7 @@ export function ForgotForm() {
   if (state.ok) {
     return (
       <div className="form" role="status">
-        <p className="form-note">{state.message} Email is not sent by this demo.</p>
+        <p className="form-note">{state.message} When email delivery is configured, check your inbox.</p>
         <DevNotice url={state.devUrl} detail="Use this reset link. The same URL is printed in the server log." />
         {state.devUrl ? null : <p className="hint">In local development the reset link appears here and in the server log.</p>}
         <p className="form-links">

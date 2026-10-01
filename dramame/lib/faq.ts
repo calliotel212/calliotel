@@ -21,7 +21,7 @@ export const FAQ = [
   },
   {
     q: "I forgot my password.",
-    a: "Use Forgot password. This demo does not send email. In local development the reset link is shown on the page and printed in the server log.",
+    a: "Use Forgot password. When email delivery is configured, we send a reset link. In local development the link is shown on the page and printed in the server log.",
   },
   {
     q: "Do I need to pay?",

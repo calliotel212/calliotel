@@ -34,12 +34,22 @@ Copy `.env.example` to `.env.local` if you want to set values. `next dev` runs w
 | `AUTH_FACEBOOK_ID` and `AUTH_FACEBOOK_SECRET` | Continue with Facebook (Auth.js). |
 | `AUTH_APPLE_ID` and `AUTH_APPLE_SECRET` | Continue with Apple (Auth.js). `AUTH_APPLE_SECRET` is the Apple client-secret JWT. |
 | `ADMIN_EMAIL` | Signed-in email allowed to open `/admin`. Leave blank and that page stays unavailable. |
+| `RESEND_API_KEY` | Resend API key. Leave blank and mail is not sent. |
+| `EMAIL_FROM` | Verified sender address, for example `noreply@dramame.net`. |
 
 If a provider’s id or secret is missing, its button stays on **Not configured** and does not start OAuth. Instagram is not a login. Footer and account follow links stay hidden until `lib/social.ts` has real profile URLs.
 
+## Email
+
+Verification and password-reset messages are sent with [Resend](https://resend.com).
+
+`RESEND_API_KEY` is the Resend API key. `EMAIL_FROM` is the sender address, and it must be a verified sender. The dramame.net domain needs that sender verified in Resend before mail can go out — for example `noreply@dramame.net`.
+
+If either variable is unset, `sendEmail` does nothing. Sign-up, resend verification, email changes, and forgot-password still finish, and local development still shows the link.
+
 ## Password reset and verification
 
-This demo does not send email. In local development (`next dev`):
+When Resend is configured, the app emails the link. When it is not, nothing is sent. In local development (`next dev`):
 
 - The reset link is shown on the forgot-password screen.
 - The same URL is printed in the server log as `[dramame] reset link for …`.

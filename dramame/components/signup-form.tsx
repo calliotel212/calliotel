@@ -45,7 +45,7 @@ export function SignupForm({ flags }: { flags: SocialFlags }) {
         <Link href="/login">Already have an account? Log in</Link>
       </p>
       <SocialButtons flags={flags} />
-      <DevNotice url={state.devUrl} detail="This server does not send email. The verification link is also printed in the server log." />
+      <DevNotice url={state.devUrl} detail="Development verification link. It is also printed in the server log." />
     </form>
   );
 }

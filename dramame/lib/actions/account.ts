@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { signOut } from "@/auth";
+import { sendEmail } from "@/lib/email";
 import { field, isDevRuntime, type FormState } from "@/lib/form-state";
 import { appOrigin } from "@/lib/origin";
 import { requireUser } from "@/lib/session";
@@ -31,15 +32,22 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
   if (!result.ok) return { fieldErrors: {}, formError: result.error };
 
   let devUrl: string | undefined;
+  let sendError: string | undefined;
   if (result.verifyToken) {
     const origin = await appOrigin();
     const url = `${origin}/verify-email?token=${result.verifyToken}`;
     recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
     if (isDevRuntime()) devUrl = url;
+    try {
+      await sendEmail({ to: result.email, kind: "verify", url });
+    } catch {
+      sendError = "Profile saved, but the verification email could not be sent.";
+    }
   }
 
   revalidatePath("/account");
   revalidatePath("/account/profile");
+  if (sendError) return { fieldErrors: {}, formError: sendError, devUrl };
   return {
     fieldErrors: {},
     ok: true,

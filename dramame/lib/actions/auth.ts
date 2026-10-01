@@ -15,6 +15,7 @@ import {
   resetPassword,
   verifyEmailToken,
 } from "@/lib/users";
+import { sendEmail } from "@/lib/email";
 import { getCurrentUser } from "@/lib/session";
 
 export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -61,6 +62,15 @@ export async function signup(_prev: FormState, formData: FormData): Promise<Form
   const origin = await appOrigin();
   const devUrl = `${origin}/verify-email?token=${created.verifyToken}`;
   recordDevLink({ userId: created.user.id, email: created.user.email, kind: "verify", url: devUrl });
+  try {
+    await sendEmail({ to: created.user.email, kind: "verify", url: devUrl });
+  } catch {
+    return {
+      fieldErrors: {},
+      formError: "Account created, but the verification email could not be sent.",
+      devUrl: isDevRuntime() ? devUrl : undefined,
+    };
+  }
 
   try {
     await signIn("credentials", {
@@ -91,6 +101,15 @@ export async function forgotPassword(_prev: FormState, formData: FormData): Prom
   const origin = await appOrigin();
   const url = `${origin}/reset-password?token=${result.token}`;
   recordDevLink({ userId: result.user.id, email: result.user.email, kind: "reset", url });
+  try {
+    await sendEmail({ to: result.user.email, kind: "reset", url });
+  } catch {
+    return {
+      fieldErrors: {},
+      formError: "Could not send the reset email.",
+      devUrl: isDevRuntime() ? url : undefined,
+    };
+  }
   return {
     fieldErrors: {},
     ok: true,
@@ -127,6 +146,15 @@ export async function resendVerification(_prev: FormState, _formData: FormData):
   const origin = await appOrigin();
   const url = `${origin}/verify-email?token=${result.token}`;
   recordDevLink({ userId: user.id, email: result.email, kind: "verify", url });
+  try {
+    await sendEmail({ to: result.email, kind: "verify", url });
+  } catch {
+    return {
+      fieldErrors: {},
+      formError: "Could not send the verification email.",
+      devUrl: isDevRuntime() ? url : undefined,
+    };
+  }
   return {
     fieldErrors: {},
     ok: true,
