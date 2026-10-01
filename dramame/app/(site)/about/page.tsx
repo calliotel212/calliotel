@@ -7,7 +7,7 @@ export default function AboutPage() {
   return (
     <main className="narrow page prose">
       <p className="eyebrow">About</p>
-      <h1>What dramame is</h1>
+      <h1>What Drama Me is</h1>
       <p>
         dramame.net is a place for vertical short-story series. An episode lasts a minute to a minute and a half. A story holds 60 to 75 of them, so the whole thing runs about an hour to an hour and a half.
       </p>

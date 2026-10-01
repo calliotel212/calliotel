@@ -1,11 +1,10 @@
 /**
- * PLACEHOLDER profile URLs.
- * These are not real dramame accounts. Replace each href with the live
- * profile before launch. The REPLACE_WITH_DRAMAME_PROFILE segment is
- * intentional so the links are obviously unfinished.
- *
- * Instagram is a follow link only. There is no Instagram OAuth login.
+ * Follow links. Instagram is a follow link only. There is no Instagram OAuth login.
+ * Entries that still use an unfinished profile segment are omitted from
+ * VISIBLE_SOCIAL_LINKS so the site does not render them.
  */
+const UNFINISHED_PROFILE = "REPLACE_WITH_DRAMAME_PROFILE";
+
 export const SOCIAL_LINKS = [
   { name: "Instagram", href: "https://instagram.com/REPLACE_WITH_DRAMAME_PROFILE" },
   { name: "Facebook", href: "https://facebook.com/REPLACE_WITH_DRAMAME_PROFILE" },
@@ -13,6 +12,10 @@ export const SOCIAL_LINKS = [
   { name: "TikTok", href: "https://www.tiktok.com/@REPLACE_WITH_DRAMAME_PROFILE" },
   { name: "X", href: "https://x.com/REPLACE_WITH_DRAMAME_PROFILE" },
 ] as const;
+
+export const VISIBLE_SOCIAL_LINKS = SOCIAL_LINKS.filter(
+  (link) => link.href.length > 0 && !link.href.includes(UNFINISHED_PROFILE),
+);
 
 export type SocialFlags = {
   google: boolean;

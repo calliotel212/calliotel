@@ -4,7 +4,7 @@ import { DevNotice } from "@/components/dev-notice";
 import { ResendForm } from "@/components/resend-form";
 import { PREVIEW_SERIES_ID } from "@/lib/episodes";
 import { requireUser } from "@/lib/session";
-import { SOCIAL_LINKS } from "@/lib/social";
+import { VISIBLE_SOCIAL_LINKS } from "@/lib/social";
 import { getProgress, latestDevLink } from "@/lib/users";
 
 export const metadata: Metadata = { title: "Account" };
@@ -44,19 +44,20 @@ export default async function AccountPage() {
           </Link>
         </div>
       </section>
-      <section className="panel">
-        <h2>Follow</h2>
-        <p className="hint">Placeholder profiles, not live accounts yet. Instagram is a follow link, not a login.</p>
-        <ul className="follow-list">
-          {SOCIAL_LINKS.map((link) => (
-            <li key={link.name}>
-              <a href={link.href} rel="noreferrer">
-                {link.name}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
+      {VISIBLE_SOCIAL_LINKS.length > 0 ? (
+        <section className="panel">
+          <h2>Follow</h2>
+          <ul className="follow-list">
+            {VISIBLE_SOCIAL_LINKS.map((link) => (
+              <li key={link.name}>
+                <a href={link.href} rel="noreferrer">
+                  {link.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </main>
   );
 }

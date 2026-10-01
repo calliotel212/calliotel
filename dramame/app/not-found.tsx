@@ -9,7 +9,7 @@ export default function NotFound() {
       <main className="narrow page">
         <p className="eyebrow">404</p>
         <h1>That page is not here</h1>
-        <p>The address does not match anything on dramame.</p>
+        <p>The address does not match anything on Drama Me.</p>
         <div className="hero-actions">
           <Link className="button button-primary" href="/">
             Back home

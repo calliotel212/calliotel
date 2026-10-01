@@ -11,7 +11,7 @@ export default async function NotificationsPage() {
   return (
     <main className="page">
       <h1>Notifications</h1>
-      <p className="lede">Choose which email you want from dramame. Mail is not sent yet; the choices are stored with your account.</p>
+      <p className="lede">Choose which email you want from Drama Me. Mail is not sent yet; the choices are stored with your account.</p>
       <PreferencesForm {...prefs} />
     </main>
   );

@@ -9,6 +9,9 @@ export default function FaqPage() {
     <main className="narrow page">
       <p className="eyebrow">FAQ</p>
       <h1>Questions</h1>
+      <p className="lede">
+        Help and FAQ share this one list. The <Link href="/help">help page</Link> points here and does not keep a second copy.
+      </p>
       <div className="faq">
         {FAQ.map((item) => (
           <details key={item.q}>

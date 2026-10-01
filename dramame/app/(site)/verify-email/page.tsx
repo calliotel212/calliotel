@@ -8,7 +8,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
   const { token = "" } = await searchParams;
   return (
     <main>
-      <AuthPanel title="Verify email" lede="Confirm the address on your dramame account.">
+      <AuthPanel title="Verify email" lede="Confirm the address on your Drama Me account.">
         <VerifyForm token={token} />
       </AuthPanel>
     </main>

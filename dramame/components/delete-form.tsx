@@ -8,7 +8,7 @@ export function DeleteForm({ email }: { email: string }) {
   const [state, action, pending] = useActionState(deleteAccount, initialFormState);
   return (
     <form action={action} className="form" noValidate aria-busy={pending}>
-      <p>This removes your profile, password, connected providers, preferences, and preview progress from this server.</p>
+      <p>This removes your profile, password, connected providers, preferences, preview progress, contact messages from this email, and story suggestions from this email.</p>
       <div className="field">
         <label htmlFor="confirm">Type {email} to confirm</label>
         <input id="confirm" name="confirm" type="email" autoComplete="off" aria-invalid={state.fieldErrors.confirm ? true : undefined} aria-describedby={state.fieldErrors.confirm ? "confirm-error" : undefined} />

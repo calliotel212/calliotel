@@ -23,7 +23,7 @@ export function PreferencesForm({
       </label>
       <label className="check">
         <input type="checkbox" name="productNews" defaultChecked={productNews} />
-        <span>Product news from dramame</span>
+        <span>Product news from Drama Me</span>
       </label>
       <label className="check">
         <input type="checkbox" name="securityEmail" defaultChecked={securityEmail} />

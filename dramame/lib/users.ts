@@ -280,7 +280,61 @@ export function upsertOAuthUser(input: { email: string; name: string; provider: 
 }
 
 export function deleteUser(userId: string) {
-  getDb().prepare("DELETE FROM users WHERE id = ?").run(userId);
+  const db = getDb();
+  const user = findUserById(userId);
+  const email = user?.email.trim().toLowerCase();
+  db.exec("BEGIN");
+  try {
+    if (email) {
+      db.prepare("DELETE FROM suggestions WHERE email IS NOT NULL AND lower(email) = ?").run(email);
+      db.prepare("DELETE FROM messages WHERE lower(email) = ?").run(email);
+    }
+    db.prepare("DELETE FROM users WHERE id = ?").run(userId);
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
+}
+
+export type StoredMessage = {
+  id: string;
+  name: string;
+  email: string;
+  body: string;
+  createdAt: number;
+};
+
+export type StoredSuggestion = {
+  id: string;
+  idea: string;
+  email: string | null;
+  createdAt: number;
+};
+
+export function listMessages(): StoredMessage[] {
+  const rows = getDb()
+    .prepare("SELECT id, name, email, body, created_at FROM messages ORDER BY created_at DESC")
+    .all() as { id: string; name: string; email: string; body: string; created_at: number }[];
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    body: row.body,
+    createdAt: row.created_at,
+  }));
+}
+
+export function listSuggestions(): StoredSuggestion[] {
+  const rows = getDb()
+    .prepare("SELECT id, idea, email, created_at FROM suggestions ORDER BY created_at DESC")
+    .all() as { id: string; idea: string; email: string | null; created_at: number }[];
+  return rows.map((row) => ({
+    id: row.id,
+    idea: row.idea,
+    email: row.email,
+    createdAt: row.created_at,
+  }));
 }
 
 export function saveMessage(input: { name: string; email: string; message: string }) {

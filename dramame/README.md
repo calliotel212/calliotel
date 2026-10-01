@@ -1,4 +1,4 @@
-# dramame
+# Drama Me
 
 Vertical short-story site for dramame.net. Episodes are 1:00–1:30. A story is 60–75 episodes. Playback is a vertical scroll: finish one episode, it unlocks, scroll up into the next.
 
@@ -33,8 +33,9 @@ Copy `.env.example` to `.env.local` if you want to set values. `next dev` runs w
 | `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` | Continue with Google (Auth.js). |
 | `AUTH_FACEBOOK_ID` and `AUTH_FACEBOOK_SECRET` | Continue with Facebook (Auth.js). |
 | `AUTH_APPLE_ID` and `AUTH_APPLE_SECRET` | Continue with Apple (Auth.js). `AUTH_APPLE_SECRET` is the Apple client-secret JWT. |
+| `ADMIN_EMAIL` | Signed-in email allowed to open `/admin`. Leave blank and that page stays unavailable. |
 
-If a provider’s id or secret is missing, its button stays on **Not configured** and does not start OAuth. Instagram is not a login. Footer and account follow links are placeholder profile URLs in `lib/social.ts`.
+If a provider’s id or secret is missing, its button stays on **Not configured** and does not start OAuth. Instagram is not a login. Footer and account follow links stay hidden until `lib/social.ts` has real profile URLs.
 
 ## Password reset and verification
 
@@ -49,10 +50,12 @@ Production does not print those links.
 ## Routes
 
 - `/` landing
+- `/genres` `/how-it-works` `/pricing` `/faq` `/suggestions`
 - `/signup` `/login` `/forgot-password` `/reset-password` `/verify-email`
 - `/account` `/account/profile` `/account/password` `/account/connected` `/account/notifications` `/account/delete`
 - `/help` `/contact` `/about` `/privacy` `/terms` `/cookies`
 - `/search` `/library` `/series/preview`
+- `/admin` read-only contact messages and story suggestions, only for the signed-in `ADMIN_EMAIL`
 - unknown paths use the 404 page
 
 Contact address on the contact page: hello@dramame.net.

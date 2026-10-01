@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BrandLockup } from "@/components/brand-lockup";
-import { SOCIAL_LINKS } from "@/lib/social";
+import { VISIBLE_SOCIAL_LINKS } from "@/lib/social";
 
 export function SiteFooter() {
   return (
@@ -33,19 +33,20 @@ export function SiteFooter() {
           <li><Link href="/cookies">Cookie policy</Link></li>
         </ul>
       </div>
-      <div>
-        <p className="eyebrow">Follow</p>
-        <ul>
-          {SOCIAL_LINKS.map((link) => (
-            <li key={link.name}>
-              <a href={link.href} rel="noreferrer">
-                {link.name}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <p className="hint">Placeholder profiles, not live accounts yet.</p>
-      </div>
+      {VISIBLE_SOCIAL_LINKS.length > 0 ? (
+        <div>
+          <p className="eyebrow">Follow</p>
+          <ul>
+            {VISIBLE_SOCIAL_LINKS.map((link) => (
+              <li key={link.name}>
+                <a href={link.href} rel="noreferrer">
+                  {link.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </footer>
   );
 }
