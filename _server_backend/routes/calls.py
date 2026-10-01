@@ -67,6 +67,10 @@ async def get_webrtc_token(to: str = "", current_user=Depends(get_current_user))
     dest_rate = float(rate_info["rate_per_min"])
 
     wallet = await db.wallets.find_one({"user_id": user_id})
+    # Telnyx voice must be paid with real (topped-up) funds, not WELCOME5 /
+    # referral promo credit — otherwise free credit drains the Telnyx balance.
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, dest_rate)
     bal = float(wallet.get("balance", 0)) if wallet else 0.0
     if bal < dest_rate:
         raise HTTPException(
@@ -134,6 +138,10 @@ async def webrtc_start(req: WebRtcStartRequest, current_user=Depends(get_current
     rate_info = lookup_voice_rate(destination)
     dest_rate = float(rate_info["rate_per_min"])
     wallet = await db.wallets.find_one({"user_id": user_id})
+    # Telnyx voice must be paid with real (topped-up) funds, not WELCOME5 /
+    # referral promo credit — otherwise free credit drains the Telnyx balance.
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, dest_rate)
     bal = float(wallet.get("balance", 0)) if wallet else 0.0
     if bal < dest_rate:
         raise HTTPException(
@@ -1304,6 +1312,10 @@ async def make_outbound_call(req: OutboundCallRequest, current_user=Depends(get_
 
     # Wallet gate — need at least 1 minute at destination rate
     wallet = await db.wallets.find_one({"user_id": user_id})
+    # Telnyx voice must be paid with real (topped-up) funds, not WELCOME5 /
+    # referral promo credit — otherwise free credit drains the Telnyx balance.
+    from services.paid_funds import assert_real_funds_cover
+    await assert_real_funds_cover(db, user_id, wallet, dest_rate)
     bal = float(wallet.get("balance", 0)) if wallet else 0.0
     if bal < dest_rate:
         raise HTTPException(
