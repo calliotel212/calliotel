@@ -1,0 +1,16 @@
+{
+  "name": "Calliotel",
+  "user": "ubuntu",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "backend (local OTP API)",
+      "command": "cd _server_backend && . .venv/bin/activate && uvicorn local_otp_app:app --host 0.0.0.0 --port 8000"
+    },
+    {
+      "name": "frontend (React dev server)",
+      "command": "REACT_APP_BACKEND_URL=http://localhost:8000 BROWSER=none PORT=3000 yarn start"
+    }
+  ],
+  "ports": [3000, 8000]
+}

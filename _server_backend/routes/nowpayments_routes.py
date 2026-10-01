@@ -584,6 +584,20 @@ async def nowpayments_ipn(request: Request):
                 f"🆔 Payment: {payment_id}\n"
                 f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
             )
+            # Auto-ban unpaid accounts that keep abandoning crypto invoices (bots).
+            if _who and _who != "unknown":
+                try:
+                    from services.fraud_protection import record_and_check_crypto_abuse
+                    _uid = (_rec or {}).get("user_id") or _who
+                    _auto_banned = await record_and_check_crypto_abuse(_uid, _who, (_rec or {}).get("ip", ""))
+                    if _auto_banned:
+                        tg_alert(
+                            f"🚫 Auto-banned {_who}\n"
+                            f"Reason: repeated expired crypto invoices (likely bot)\n"
+                            f"🕐 {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
+                        )
+                except Exception as _abe:
+                    logger.warning("crypto abuse auto-ban check failed: %s", _abe)
 
     if payment_status in FINISHED_STATUSES:
         # 1. Try manual payment record — atomic claim prevents double-credit

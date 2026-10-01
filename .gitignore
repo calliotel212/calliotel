@@ -39,6 +39,11 @@ apex-tg/node_modules/
 .replit-artifact/
 .DS_Store
 .cursor/
+# Keep the Cloud Agent environment config tracked
+!.cursor/
+.cursor/*
+!.cursor/environment.json
+!.cursor/install.sh
 .ghconfig/
 npm-debug.log*
 yarn-debug.log*

@@ -80,6 +80,22 @@ async def lifespan(app: FastAPI):
     # Telnyx: no trunk assignment needed — voice + SMS are fully automatic.
     # (DIDWW trunk verification removed 2026-05-22 — provider replaced by Telnyx)
 
+    # Telnyx webhook verification readiness (fail-closed guard). Warn loudly if
+    # TELNYX_PUBLIC_KEY or PyNaCl is missing, since that rejects every Telnyx
+    # call webhook and breaks legitimate call billing.
+    try:
+        from services.telnyx_webhook_verify import log_config_status as _telnyx_verify_status
+        _telnyx_verify_status(logger)
+    except Exception as e:
+        logger.warning(f"⚠️ Telnyx webhook verify status check skipped: {e}")
+
+    # Reseller / developer programmatic API kill-switch status.
+    try:
+        from services.reseller_gate import log_reseller_gate_status
+        log_reseller_gate_status(logger)
+    except Exception as e:
+        logger.warning(f"⚠️ Reseller gate status check skipped: {e}")
+
     # Email blast retry scheduler (resumes after Resend daily quota reset)
     try:
         import asyncio as _asyncio
@@ -429,9 +445,23 @@ from routes import coop_stack
 from routes import spam_protection
 app.include_router(spam_protection.router, prefix="/api/spam", tags=["Spam Protection"])
 
-# Include Public API router
-from routes import public_api
-app.include_router(public_api.router, prefix="/api/public-api", tags=["Public API"])
+# Include Public API router — gated behind the reseller/developer kill-switch.
+# Import defensively: a missing/broken reseller_gate module must never take down
+# the whole backend (signup, login, purchases). Default to disabled (secure).
+try:
+    from services.reseller_gate import reseller_api_enabled as _reseller_api_enabled
+except Exception as _e:
+    logger.error(f"reseller_gate import failed — keeping reseller API disabled: {_e}")
+    def _reseller_api_enabled():
+        return False
+if _reseller_api_enabled():
+    try:
+        from routes import public_api
+        app.include_router(public_api.router, prefix="/api/public-api", tags=["Public API"])
+    except Exception as _e:
+        logger.error(f"Public API router not mounted: {_e}")
+else:
+    logger.info("🔒 Public API router skipped (RESELLER_API_ENABLED not set)")
 
 from routes import public_inventory
 app.include_router(public_inventory.router, prefix="/api/public/inventory", tags=["Public Inventory"])
@@ -467,14 +497,22 @@ app.include_router(premium_numbers.router, prefix="/api", tags=["Premium Numbers
 
 # Include credit packages router
 
-# Include reseller API router
-from routes import reseller_api
-
-app.include_router(reseller_api.router, prefix="/api", tags=["Reseller API"])
-
-from routes import reseller_v2
-
-app.include_router(reseller_v2.router, prefix="/api/reseller", tags=["Reseller V2 (White-Label)"])
+# Include reseller API routers — gated behind the reseller/developer kill-switch.
+# Disabled by default so nobody can self-register as a reseller / obtain a
+# reseller API key without an explicit RESELLER_API_ENABLED opt-in.
+if _reseller_api_enabled():
+    try:
+        from routes import reseller_api
+        app.include_router(reseller_api.router, prefix="/api", tags=["Reseller API"])
+    except Exception as _e:
+        logger.error(f"Reseller API router not mounted: {_e}")
+    try:
+        from routes import reseller_v2
+        app.include_router(reseller_v2.router, prefix="/api/reseller", tags=["Reseller V2 (White-Label)"])
+    except Exception as _e:
+        logger.error(f"Reseller V2 router not mounted: {_e}")
+else:
+    logger.info("🔒 Reseller API routers skipped (RESELLER_API_ENABLED not set)")
 
 from routes import credit_packages
 app.include_router(credit_packages.router, prefix="/api", tags=["Credit Packages"])
@@ -619,9 +657,17 @@ from routes import esim_webhook
 app.include_router(esim_webhook.router)
 
 # ── Calliotel Developer API ──────────────────────────────────────────────────
-from routes import api_keys
-app.include_router(api_keys.router, prefix="/api/developer", tags=["Developer — Key Management"])
-app.include_router(api_keys.v1, tags=["Developer — Public REST API v1"])
+# Gated behind the reseller/developer kill-switch: developer key management and
+# the public REST API v1 let outsiders consume services programmatically.
+if _reseller_api_enabled():
+    try:
+        from routes import api_keys
+        app.include_router(api_keys.router, prefix="/api/developer", tags=["Developer — Key Management"])
+        app.include_router(api_keys.v1, tags=["Developer — Public REST API v1"])
+    except Exception as _e:
+        logger.error(f"Developer API router not mounted: {_e}")
+else:
+    logger.info("🔒 Developer API router skipped (RESELLER_API_ENABLED not set)")
 
 
 # Add Error Filter Middleware FIRST (before CORS) to mask provider names
@@ -863,3 +909,21 @@ async def serve_spa(request: Request, full_path: str):
         )
 
     raise HTTPException(status_code=404, detail="Frontend not built")
+
+
+# ── RESELLER_KILLSWITCH_MARKER — reseller/developer API kill-switch ──────────
+# Runs after every router is mounted. When RESELLER_API_ENABLED is unset, all
+# reseller/developer/public-api routes are removed so no outsider can obtain a
+# key or use the reseller API. Reversible: set RESELLER_API_ENABLED=1 + restart.
+try:
+    from services.reseller_gate import prune_reseller_routes as _prune_reseller_routes
+    from services.reseller_gate import log_reseller_gate_status as _log_reseller_gate_status
+    _removed_reseller_routes = _prune_reseller_routes(app)
+    _log_reseller_gate_status(logger)
+    if _removed_reseller_routes:
+        logger.info(
+            "🔒 Removed %d reseller/developer route(s): %s",
+            len(_removed_reseller_routes), _removed_reseller_routes,
+        )
+except Exception as _e:  # never let the kill-switch break startup
+    logger.error("Reseller kill-switch not applied: %s", _e)
