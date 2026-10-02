@@ -889,7 +889,8 @@ select { color-scheme: dark; }
   .auth-poster { min-height: 14rem; border-right: 0; border-bottom: 1px solid var(--line); }
   .nav-desktop { display: none; }
   .menu-button { display: inline-flex; }
-  .nav-mobile {
+  .nav-mobile:not(.is-open) { display: none !important; }
+  .nav-mobile.is-open {
     display: block;
     position: absolute;
     top: 100%;

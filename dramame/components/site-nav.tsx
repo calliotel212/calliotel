@@ -18,7 +18,8 @@ const LINKS = [
 export function SiteNav({ isAuthed }: { isAuthed: boolean }) {
   const pathname = usePathname();
   const [openPath, setOpenPath] = useState<string | null>(null);
-  const open = openPath === pathname;
+  // Closed on the server and on first paint. A null pathname must not count as open.
+  const open = openPath !== null && openPath === pathname;
   const panelId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
