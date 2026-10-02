@@ -9,6 +9,14 @@ test("email validation covers empty and invalid", () => {
   assert.equal(validateEmail("viewer@dramame.net"), undefined);
 });
 
+test("email validation accepts plus, dots, underscores, and multi-part domains", () => {
+  for (const email of ["astor539@gmail.com", "g_agroup2@yahoo.com", "name+tag@gmail.com", "first.last@example.co.uk"]) {
+    assert.equal(validateEmail(email), undefined);
+  }
+  assert.equal(validateEmail("no-at-sign"), "That email doesn’t look right.");
+  assert.equal(validateEmail("trailing@dot."), "That email doesn’t look right.");
+});
+
 test("password validation rejects weak passwords", () => {
   assert.equal(validatePassword(""), "Enter a password.");
   assert.equal(validatePassword("short1"), "Use at least 8 characters with a letter and a number.");
