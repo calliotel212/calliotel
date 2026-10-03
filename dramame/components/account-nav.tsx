@@ -6,6 +6,7 @@ import { logout } from "@/lib/actions/auth";
 
 const LINKS = [
   { href: "/account", label: "Home" },
+  { href: "/account/videos", label: "Videos" },
   { href: "/account/profile", label: "Profile" },
   { href: "/account/password", label: "Password" },
   { href: "/account/connected", label: "Connected accounts" },

@@ -8,10 +8,10 @@ export default function PricingPage() {
   return (
     <main className="page">
       <p className="eyebrow">Plans</p>
-      <h1>Three ways to watch.</h1>
-      <p className="lede">Pick a plan for your account. Prices are in US dollars.</p>
+      <h1>Finished videos, priced per video.</h1>
+      <p className="lede">Each plan is a finished vertical video, or a series of them. Prices are in US dollars.</p>
       <p className="form-note" role="note">
-        No payment is taken yet. Choosing a plan does not charge a card, start a checkout, or lock the site.
+        No checkout yet. Choosing a plan does not charge a card.
       </p>
       <div className="price-grid">
         {PLANS.map((plan) => (

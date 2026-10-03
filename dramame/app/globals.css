@@ -260,6 +260,8 @@ p { margin: 0 0 0.8rem; }
 
 .genre-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+.price-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 .genre-list li, .price-card {
   margin: 0;
   padding: 1rem 1rem 0.4rem;
@@ -293,6 +295,19 @@ p { margin: 0 0 0.8rem; }
 .price-includes li { margin: 0.2rem 0; }
 
 .price-card .button { margin-top: auto; align-self: flex-start; }
+
+.script-block { white-space: pre-wrap; }
+
+.shot-list { margin: 0.4rem 0 1rem; padding-left: 1.2rem; display: grid; gap: 0.8rem; }
+
+.shot-list p { margin: 0.15rem 0; }
+
+.video-player {
+  width: min(100%, 22rem);
+  aspect-ratio: 9 / 16;
+  background: #000;
+  margin: 1rem 0;
+}
 
 .steps { list-style: none; margin: 1.2rem 0 1.6rem; padding: 0; display: grid; gap: 1rem; }
 

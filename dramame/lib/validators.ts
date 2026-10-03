@@ -101,6 +101,16 @@ export function validateStudioRequest(input: { name: string; email: string; idea
   return fieldErrors;
 }
 
+export function validateVideoRequest(input: { script: string; plan: string | null }): FieldErrors {
+  const fieldErrors: FieldErrors = {};
+  const script = input.script.trim();
+  if (!script) fieldErrors.script = "Enter a script or story idea.";
+  else if (script.length < 10) fieldErrors.script = "Use at least 10 characters.";
+  else if (script.length > 2000) fieldErrors.script = "Use 2000 characters or fewer.";
+  if (!input.plan) fieldErrors.plan = "Choose a plan.";
+  return fieldErrors;
+}
+
 export function safeNextPath(value: string | null | undefined, fallback = "/account"): string {
   if (!value) return fallback;
   if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return fallback;

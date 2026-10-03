@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { normalizePlan } from "./plans.ts";
-import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup, validateStudioRequest, validateSuggestion } from "./validators.ts";
+import { safeNextPath, validateEmail, validateLogin, validatePassword, validateSignup, validateStudioRequest, validateSuggestion, validateVideoRequest } from "./validators.ts";
 
 test("email validation covers empty and invalid", () => {
   assert.equal(validateEmail(""), "Enter your email.");
@@ -58,12 +58,29 @@ test("studio request keeps the idea to one line", () => {
   assert.equal(validateStudioRequest({ name: "Ada", email: "ada@dramame.net", idea: "line one\nline two" }).idea, "Keep the idea to one line.");
 });
 
-test("plan ids are free, fan, and studio", () => {
-  assert.equal(normalizePlan("fan"), "fan");
-  assert.equal(normalizePlan(" Studio "), "studio");
+test("plan ids are single, two, series10, and custom", () => {
+  assert.equal(normalizePlan("single"), "single");
+  assert.equal(normalizePlan(" Two "), "two");
+  assert.equal(normalizePlan("series10"), "series10");
+  assert.equal(normalizePlan("custom"), "custom");
+  assert.equal(normalizePlan("free"), null);
+  assert.equal(normalizePlan("fan"), null);
+  assert.equal(normalizePlan("studio"), null);
   assert.equal(normalizePlan("enterprise"), null);
   assert.equal(normalizePlan(""), null);
   assert.equal(normalizePlan(undefined), null);
+});
+
+test("video request accepts a script and a per-video plan", () => {
+  const script = "A keeper loses one minute every night.";
+  assert.deepEqual(validateVideoRequest({ script, plan: "single" }), {});
+  assert.equal(validateVideoRequest({ script: "too short", plan: "two" }).script, "Use at least 10 characters.");
+  assert.equal(validateVideoRequest({ script: "x".repeat(2001), plan: "series10" }).script, "Use 2000 characters or fewer.");
+  assert.equal(validateVideoRequest({ script: "", plan: "custom" }).script, "Enter a script or story idea.");
+  assert.equal(validateVideoRequest({ script, plan: null }).plan, "Choose a plan.");
+  assert.equal(validateVideoRequest({ script, plan: normalizePlan("free") }).plan, "Choose a plan.");
+  assert.equal(validateVideoRequest({ script, plan: normalizePlan("fan") }).plan, "Choose a plan.");
+  assert.equal(validateVideoRequest({ script, plan: normalizePlan("studio") }).plan, "Choose a plan.");
 });
 
 test("safeNextPath blocks off-site redirects", () => {

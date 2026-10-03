@@ -145,10 +145,37 @@ const SQLITE_SCHEMA = `
       read_at INTEGER
     );
 
+    CREATE TABLE IF NOT EXISTS videos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      series_id TEXT,
+      plan_id TEXT NOT NULL,
+      script_text TEXT NOT NULL,
+      shot_list_json TEXT,
+      status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'generating', 'assembling', 'ready', 'failed')),
+      output_url TEXT,
+      error TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS shots (
+      id TEXT PRIMARY KEY,
+      video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+      "index" INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      duration_seconds INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      clip_url TEXT,
+      error TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token);
     CREATE INDEX IF NOT EXISTS idx_users_reset ON users(reset_token);
     CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id);
     CREATE INDEX IF NOT EXISTS idx_post_queue_user ON post_queue(user_id);
+    CREATE INDEX IF NOT EXISTS idx_videos_user ON videos(user_id);
+    CREATE INDEX IF NOT EXISTS idx_shots_video ON shots(video_id);
   `;
 
 // Postgres INTEGER is 32-bit. Timestamps are stored as milliseconds, so those columns are BIGINT.
@@ -245,10 +272,35 @@ const POSTGRES_SCHEMA = [
       created_at BIGINT NOT NULL,
       read_at BIGINT
     )`,
+  `CREATE TABLE IF NOT EXISTS videos (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      series_id TEXT,
+      plan_id TEXT NOT NULL,
+      script_text TEXT NOT NULL,
+      shot_list_json TEXT,
+      status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'generating', 'assembling', 'ready', 'failed')),
+      output_url TEXT,
+      error TEXT,
+      created_at BIGINT NOT NULL,
+      updated_at BIGINT NOT NULL
+    )`,
+  `CREATE TABLE IF NOT EXISTS shots (
+      id TEXT PRIMARY KEY,
+      video_id TEXT NOT NULL REFERENCES videos(id) ON DELETE CASCADE,
+      "index" INTEGER NOT NULL,
+      prompt TEXT NOT NULL,
+      duration_seconds INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      clip_url TEXT,
+      error TEXT
+    )`,
   `CREATE INDEX IF NOT EXISTS idx_users_verification ON users(verification_token)`,
   `CREATE INDEX IF NOT EXISTS idx_users_reset ON users(reset_token)`,
   `CREATE INDEX IF NOT EXISTS idx_social_accounts_user ON social_accounts(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_post_queue_user ON post_queue(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_videos_user ON videos(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_shots_video ON shots(video_id)`,
   `ALTER TABLE preferences ADD COLUMN IF NOT EXISTS auto_post_confirmations INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT`,
   `ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at BIGINT`,

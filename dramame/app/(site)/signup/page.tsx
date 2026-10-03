@@ -14,7 +14,7 @@ export default async function SignupPage({ searchParams }: { searchParams: Promi
   const plan = normalizePlan(planParam);
   const selected = plan ? PLANS.find((item) => item.id === plan) : null;
   const lede = selected
-    ? `${selected.name} is selected (${selected.price}). No payment is taken yet. Name, email, and a password. You will confirm the terms before the account is saved.`
+    ? `${selected.name} is selected (${selected.price}). No checkout yet. Name, email, and a password. You will confirm the terms before the account is saved.`
     : "Name, email, and a password. You will confirm the terms before the account is saved.";
   return (
     <main>

@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test lib/validators.test.ts lib/unlock.test.ts lib/password.test.ts"
+    "test": "node --experimental-strip-types --test lib/validators.test.ts lib/unlock.test.ts lib/password.test.ts lib/video/generator.test.ts"
   },
   "dependencies": {
     "next": "16.3.6",
