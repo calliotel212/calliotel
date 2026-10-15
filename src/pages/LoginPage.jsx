@@ -20,6 +20,7 @@ const LOCAL_OTP_DEMO = /localhost|127\.0\.0\.1/.test(process.env.REACT_APP_BACKE
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -135,7 +136,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, totpCode);
       
       console.log('Login result:', result);
       
@@ -199,6 +200,13 @@ const LoginPage = () => {
                 </Link>
               </div>
             ),
+            variant: "destructive",
+            duration: 7000,
+          });
+        } else if (errLower.includes('two-factor')) {
+          toast({
+            title: "Authenticator code needed",
+            description: "Enter the 6-digit code from your authenticator app (or a backup code).",
             variant: "destructive",
             duration: 7000,
           });
@@ -396,6 +404,22 @@ const LoginPage = () => {
                 )}
               </button>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-2)' }}>
+              Authenticator code <span className="font-normal opacity-70">(only if you turned on 2FA)</span>
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={totpCode}
+              onChange={(e) => setTotpCode(e.target.value)}
+              className="w-full px-4 py-3 rounded-lg text-white placeholder-gray-500 outline-none"
+              style={{ background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.12)' }}
+              placeholder="Optional 6-digit code"
+            />
           </div>
 
           <div className="flex items-center justify-between">

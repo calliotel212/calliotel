@@ -26,6 +26,7 @@ const SmsAlertWatcher        = lazy(() => import('./components/SmsAlertWatcher')
 const KeepAliveWatcher       = lazy(() => import('./components/KeepAliveWatcher'));
 const AnnouncementBanner     = lazy(() => import('./components/AnnouncementBanner'));
 const MobileAppBanner        = lazy(() => import('./components/MobileAppBanner'));
+const EmailConfirmBanner     = lazy(() => import('./components/EmailConfirmBanner'));
 
 // ── Pages ─────────────────────────────────────────────────────────
 const CampaignLandingPage          = lazy(() => import('./pages/CampaignLandingPage'));
@@ -177,6 +178,7 @@ function App() {
               <PushNotificationBanner />
               <SmsAlertWatcher />
               <KeepAliveWatcher />
+              <EmailConfirmBanner />
               <AnnouncementBanner />
               <MobileAppBanner />
             </Suspense>

@@ -185,11 +185,8 @@ async def _credit(record: dict, fincra_ref: str) -> bool:
     user_id = claimed["user_id"]
     amount_usd = float(claimed["amount_usd"])
     now = datetime.now(timezone.utc)
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance": amount_usd}, "$set": {"updated_at": now.isoformat()}},
-        upsert=True,
-    )
+    from services.paid_funds import record_paid_topup
+    await record_paid_topup(db, user_id, amount_usd)
     wallet = await db.wallets.find_one({"user_id": user_id})
     new_balance = float((wallet or {}).get("balance", amount_usd))
     tx_doc = {

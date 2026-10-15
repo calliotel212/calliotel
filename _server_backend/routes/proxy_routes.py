@@ -141,6 +141,8 @@ async def quote(country: str, period: int = 5, amount: int = 1):
 
 @router.post("/buy")
 async def buy_proxy(body: BuyBody, current_user: dict = Depends(get_current_user)):
+    from services.email_gate import require_confirmed_email
+    require_confirmed_email(current_user)
     cookie = await smspva.load_cookie(db)
     if not smspva.configured(cookie):
         raise HTTPException(
@@ -162,13 +164,18 @@ async def buy_proxy(body: BuyBody, current_user: dict = Depends(get_current_user
 
     price = float(quoted["price"])
     cost = float(quoted.get("provider_cost") or 0)
+    from services.wallet_guard import credit as wallet_credit
+    from services.wallet_guard import debit_if_funded
+
     wallet = await db.wallets.find_one({"user_id": user_id})
-    balance = float(wallet.get("balance", 0)) if wallet else 0.0
-    if balance < price:
+    reserved = await debit_if_funded(db, user_id, price)
+    if not reserved:
+        balance = float(wallet.get("balance", 0)) if wallet else 0.0
         raise HTTPException(
             402,
             f"Insufficient balance. This proxy is ${price:.2f}. You have ${balance:.2f}.",
         )
+    balance = float(reserved.get("balance", 0))
 
     owned = await db.proxy_orders.find({"provider_id": {"$exists": True}}).to_list(500)
     known_ids = {str(r.get("provider_id")) for r in owned if r.get("provider_id")}
@@ -184,19 +191,16 @@ async def buy_proxy(body: BuyBody, current_user: dict = Depends(get_current_user
         )
     except smspva.SmspvaProxyError as e:
         logger.warning("SMSPVA buy refused: %s", e)
+        await wallet_credit(db, user_id, price)
         raise HTTPException(e.status_code, str(e)) from e
     except Exception as e:
         logger.error("SMSPVA buy failed: %s", e)
+        await wallet_credit(db, user_id, price)
         raise HTTPException(503, "Could not rent a proxy right now. You were not charged.") from e
 
     item = rented[0]
     now_iso = _now_iso()
-    new_balance = round(balance - price, 2)
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$set": {"balance": new_balance, "updated_at": now_iso}},
-        upsert=True,
-    )
+    new_balance = round(float(balance), 2)
     await db.transactions.insert_one({
         "user_id": user_id,
         "type": "debit",

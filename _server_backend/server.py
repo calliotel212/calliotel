@@ -117,7 +117,13 @@ async def lifespan(app: FastAPI):
     logger.info("✅ MongoDB connection closed")
 
 # Create the main app without a prefix
-app = FastAPI(lifespan=lifespan)
+_docs_on = os.environ.get("ENABLE_API_DOCS") == "1"
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
+)
 
 def _include_optional(module_name, **kwargs):
     """Mount a router. Import failures must never take down signup/login."""
@@ -619,6 +625,8 @@ app.include_router(api_keys.v1, tags=["Developer — Public REST API v1"])
 
 
 # Add Error Filter Middleware FIRST (before CORS) to mask provider names
+from middleware.security_headers import SecurityHeadersMiddleware
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(ErrorFilterMiddleware)
 
 app.add_middleware(

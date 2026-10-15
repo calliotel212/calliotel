@@ -88,11 +88,8 @@ async def _credit_user(record: dict, status: str):
     credits = float(record["credits_to_add"])
     now = datetime.now(timezone.utc)
 
-    await db.wallets.update_one(
-        {"user_id": user_id},
-        {"$inc": {"balance": credits}},
-        upsert=True,
-    )
+    from services.paid_funds import record_paid_topup
+    await record_paid_topup(db, user_id, credits)
     tx_doc = {
         "user_id": user_id,
         "amount": credits,
@@ -618,7 +615,8 @@ async def nowpayments_ipn(request: Request):
                     uid = inv_record["user_id"]
                     amt = float(inv_record["credits_to_add"])
                     now = datetime.now(timezone.utc)
-                    await db.wallets.update_one({"user_id": uid}, {"$inc": {"balance": amt}}, upsert=True)
+                    from services.paid_funds import record_paid_topup
+                    await record_paid_topup(db, uid, amt)
                     inv_tx_doc = {
                         "user_id": uid, "amount": amt, "type": "credit",
                         "description": f"Top-up via NOWPayments — ${amt:.2f} ({inv_record['pay_currency'].upper()})",
