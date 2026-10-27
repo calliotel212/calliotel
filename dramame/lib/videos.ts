@@ -175,3 +175,23 @@ export async function getVideoForUser(userId: string, videoId: string): Promise<
   if (!row) return null;
   return toVideo(row, await shotsFor(row.id));
 }
+
+export type VideoStatusSnapshot = {
+  id: string;
+  status: VideoStatus;
+  outputUrl: string | null;
+  error: string | null;
+};
+
+export async function getVideoStatusForUser(userId: string, videoId: string): Promise<VideoStatusSnapshot | null> {
+  const row = (await getDb()
+    .prepare(`SELECT id, status, output_url, error FROM videos WHERE id = ? AND user_id = ?`)
+    .get(videoId, userId)) as Pick<VideoRow, "id" | "status" | "output_url" | "error"> | undefined;
+  if (!row) return null;
+  return {
+    id: row.id,
+    status: asStatus(row.status),
+    outputUrl: row.output_url,
+    error: row.error,
+  };
+}
