@@ -309,6 +309,14 @@ p { margin: 0 0 0.8rem; }
   margin: 1rem 0;
 }
 
+.video-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0 1rem;
+}
+
 .video-ready {
   display: flex;
   flex-direction: column;

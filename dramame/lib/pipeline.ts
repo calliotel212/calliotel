@@ -16,16 +16,54 @@ type SavedShot = ShotDraft & {
   error: string | null;
 };
 
-type ScriptRow = {
+type VideoRow = {
   id?: string;
   script_text?: string | null;
+  status?: string | null;
+  output_url?: string | null;
+  error?: string | null;
+};
+
+type ShotRow = {
+  shot_index?: unknown;
+  prompt?: unknown;
+  duration_seconds?: unknown;
+  status?: unknown;
+  clip_url?: unknown;
+  error?: unknown;
 };
 
 type StatementDb = {
   prepare(sql: string): {
     get(...params: unknown[]): Promise<unknown>;
+    all(...params: unknown[]): Promise<unknown[]>;
     run(...params: unknown[]): Promise<unknown>;
   };
+};
+
+export type GenerationShotState = {
+  index: number;
+  prompt: string;
+  durationSeconds: number;
+  status: string;
+  clipUrl: string | null;
+  error: string | null;
+};
+
+export type GenerationStepResult = {
+  id: string;
+  status: "queued" | "generating" | "assembling" | "ready" | "failed";
+  error: string | null;
+  outputUrl: string | null;
+  remaining: number;
+  shot: GenerationShotState | null;
+  shots: GenerationShotState[];
+};
+
+type StepOptions = {
+  retry?: boolean;
+  db?: StatementDb;
+  generateClip?: (prompt: string, imageUrl: string, durationSeconds: number) => Promise<string | null>;
 };
 
 export function splitScriptIntoShots(script: string): ShotDraft[] {
@@ -119,16 +157,102 @@ export async function planShots(script: string): Promise<ShotDraft[]> {
 
 function redactKeys(value: string): string {
   let text = value.replace(/\b(Bearer|Key)\s+\S+/gi, "$1 [redacted]");
-  for (const name of ["ELEVENLABS_API_KEY", "FAL_API_KEY"]) {
+  for (const name of ["ELEVENLABS_API_KEY", "FAL_API_KEY", "KLING_API_KEY", "AUTH_SECRET", "DATABASE_URL", "RESEND_API_KEY"]) {
     const secret = process.env[name]?.trim();
     if (secret) text = text.split(secret).join("[redacted]");
   }
   return text.replace(/\s+/g, " ").slice(0, 500);
 }
 
+function asNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "bigint") return Number(value);
+  if (typeof value === "string" && value.trim() && Number.isFinite(Number(value))) return Number(value);
+  return null;
+}
+
+function changedRows(result: unknown): number {
+  if (!result || typeof result !== "object" || !("changes" in result)) return 0;
+  return asNumber((result as { changes?: unknown }).changes) ?? 0;
+}
+
+function clipFailureMessage(index: number): string {
+  return process.env.FAL_API_KEY?.trim() ? `Clip generation failed for shot ${index}.` : "FAL_API_KEY is not set.";
+}
+
+function publishShot(shot: SavedShot): GenerationShotState {
+  return {
+    index: shot.index,
+    prompt: shot.prompt,
+    durationSeconds: shot.duration_seconds,
+    status: shot.status,
+    clipUrl: shot.clip_url,
+    error: shot.error,
+  };
+}
+
+function outputUrlOf(shots: SavedShot[]): string | null {
+  return (
+    shots
+      .slice()
+      .sort((a, b) => a.index - b.index)
+      .find((shot) => shot.status === "ready" && shot.clip_url)?.clip_url ?? null
+  );
+}
+
+function stepResult(
+  videoId: string,
+  status: GenerationStepResult["status"],
+  error: string | null,
+  outputUrl: string | null,
+  shots: SavedShot[],
+  shot: SavedShot | null,
+): GenerationStepResult {
+  return {
+    id: videoId,
+    status,
+    error,
+    outputUrl,
+    remaining: shots.filter((item) => item.status === "queued").length,
+    shot: shot ? publishShot(shot) : null,
+    shots: shots.map(publishShot),
+  };
+}
+
 async function openDb(): Promise<StatementDb> {
   const { getDb } = await import("@/lib/db");
   return getDb();
+}
+
+async function loadVideo(db: StatementDb, videoId: string): Promise<VideoRow | null> {
+  const row = (await db
+    .prepare("SELECT id, script_text, status, output_url, error FROM videos WHERE id = ?")
+    .get(videoId)) as VideoRow | undefined;
+  return row?.id ? row : null;
+}
+
+async function loadShots(db: StatementDb, videoId: string): Promise<SavedShot[]> {
+  const rows = (await db
+    .prepare(
+      `SELECT "index" AS shot_index, prompt, duration_seconds, status, clip_url, error
+       FROM shots WHERE video_id = ? ORDER BY "index" ASC`,
+    )
+    .all(videoId)) as ShotRow[];
+  const shots: SavedShot[] = [];
+  for (const row of rows) {
+    const index = asNumber(row.shot_index);
+    const duration = asNumber(row.duration_seconds);
+    if (index === null || !Number.isInteger(index) || duration === null || typeof row.prompt !== "string") continue;
+    shots.push({
+      index,
+      prompt: row.prompt,
+      duration_seconds: duration,
+      status: typeof row.status === "string" && row.status ? row.status : "queued",
+      clip_url: typeof row.clip_url === "string" ? row.clip_url : null,
+      error: typeof row.error === "string" ? row.error : null,
+    });
+  }
+  return shots.sort((a, b) => a.index - b.index);
 }
 
 async function writeShotList(db: StatementDb, videoId: string, shots: SavedShot[]): Promise<void> {
@@ -165,53 +289,156 @@ async function saveShots(db: StatementDb, videoId: string, shots: ShotDraft[]): 
   return saved;
 }
 
-async function execute(videoId: string): Promise<void> {
-  const db = await openDb();
-  const row = (await db.prepare("SELECT id, script_text FROM videos WHERE id = ?").get(videoId)) as ScriptRow | undefined;
-  if (!row?.id) {
-    console.error(`runPipeline failed for ${videoId}: video not found.`);
-    return;
+async function markVideoGenerating(db: StatementDb, videoId: string): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE videos SET status = 'generating', error = NULL, updated_at = ?
+       WHERE id = ? AND status IN ('queued', 'generating', 'assembling')`,
+    )
+    .run(Date.now(), videoId);
+}
+
+async function finishStep(db: StatementDb, videoId: string, shots: SavedShot[], shot: SavedShot | null): Promise<GenerationStepResult> {
+  await writeShotList(db, videoId, shots);
+  const failed = shots.find((item) => item.status === "failed");
+  if (failed) {
+    const message = failed.error ?? clipFailureMessage(failed.index);
+    await markFailed(db, videoId, message);
+    return stepResult(videoId, "failed", redactKeys(message), null, shots, shot);
   }
 
-  await db.prepare("UPDATE videos SET status = 'generating', error = NULL, updated_at = ? WHERE id = ?").run(Date.now(), videoId);
-  const drafts = await planShots(row.script_text ?? "");
-  const shots = await saveShots(db, videoId, drafts);
-  const imageUrl = process.env.DRAMAME_START_IMAGE_URL?.trim() ?? "";
-  const { generateClip } = await import("@/lib/video-generator");
+  const remaining = shots.filter((item) => item.status === "queued").length;
+  const busy = shots.some((item) => item.status === "generating" || item.status === "assembling");
+  if (shots.length > 0 && remaining === 0 && !busy && shots.every((item) => item.status === "ready")) {
+    const outputUrl = outputUrlOf(shots);
+    await db
+      .prepare("UPDATE videos SET status = 'ready', output_url = ?, error = NULL, updated_at = ? WHERE id = ?")
+      .run(outputUrl, Date.now(), videoId);
+    return stepResult(videoId, "ready", null, outputUrl, shots, shot);
+  }
 
-  for (const shot of shots) {
-    const clipUrl = await generateClip(shot.prompt, imageUrl, shot.duration_seconds);
-    if (!clipUrl) {
-      const message = process.env.FAL_API_KEY?.trim() ? `Clip generation failed for shot ${shot.index}.` : "FAL_API_KEY is not set.";
-      console.error(`runPipeline failed for ${videoId}: ${message}`);
-      shot.status = "failed";
-      shot.error = message;
-      await updateShot(db, videoId, shot);
+  await markVideoGenerating(db, videoId);
+  return stepResult(videoId, "generating", null, null, shots, shot);
+}
+
+async function requeueStuck(db: StatementDb, videoId: string): Promise<void> {
+  await db
+    .prepare(
+      `UPDATE shots SET status = 'queued', clip_url = NULL, error = NULL
+       WHERE video_id = ? AND status IN ('failed', 'generating', 'assembling')`,
+    )
+    .run(videoId);
+  await db
+    .prepare(
+      `UPDATE videos SET status = 'generating', error = NULL, updated_at = ?
+       WHERE id = ? AND status IN ('failed', 'generating', 'assembling')`,
+    )
+    .run(Date.now(), videoId);
+  const shots = await loadShots(db, videoId);
+  if (shots.length > 0) await writeShotList(db, videoId, shots);
+}
+
+// Generates the first queued shot only, then returns. The browser calls this again for the next shot.
+export async function advanceGenerationStep(videoId: string, options?: StepOptions): Promise<GenerationStepResult> {
+  const db = options?.db ?? (await openDb());
+  const row = await loadVideo(db, videoId);
+  if (!row?.id) throw new Error("Video not found.");
+
+  if (options?.retry) await requeueStuck(db, videoId);
+
+  const video = (await loadVideo(db, videoId)) ?? row;
+  const status = typeof video.status === "string" ? video.status : "queued";
+  let shots = await loadShots(db, videoId);
+  if (!options?.retry && status === "failed") {
+    const message = typeof video.error === "string" && video.error ? video.error : "Generation failed.";
+    return stepResult(videoId, "failed", message, null, shots, shots.find((shot) => shot.status === "failed") ?? null);
+  }
+
+  if (shots.length === 0) {
+    shots = await saveShots(db, videoId, await planShots(row.script_text ?? ""));
+    await markVideoGenerating(db, videoId);
+  }
+
+  if (!options?.retry && status === "ready" && shots.length > 0 && shots.every((shot) => shot.status === "ready")) {
+    const outputUrl = (typeof video.output_url === "string" && video.output_url) || outputUrlOf(shots);
+    return stepResult(videoId, "ready", null, outputUrl, shots, null);
+  }
+
+  const existingFailure = shots.find((shot) => shot.status === "failed");
+  if (!options?.retry && existingFailure) {
+    const message = existingFailure.error ?? clipFailureMessage(existingFailure.index);
+    await markFailed(db, videoId, message);
+    return stepResult(videoId, "failed", redactKeys(message), null, shots, existingFailure);
+  }
+
+  const next = shots.find((shot) => shot.status === "queued");
+  if (!next) return finishStep(db, videoId, shots, null);
+
+  await markVideoGenerating(db, videoId);
+  const claim = await db
+    .prepare(`UPDATE shots SET status = 'generating', error = NULL WHERE video_id = ? AND "index" = ? AND status = 'queued'`)
+    .run(videoId, next.index);
+  if (changedRows(claim) < 1) {
+    const fresh = await loadShots(db, videoId);
+    const stillQueued = fresh.find((shot) => shot.index === next.index && shot.status === "queued");
+    if (!stillQueued) return finishStep(db, videoId, fresh, null);
+  }
+
+  next.status = "generating";
+  next.error = null;
+  await writeShotList(db, videoId, shots);
+
+  const generateClip = options?.generateClip ?? (await import("@/lib/video-generator")).generateClip;
+  const imageUrl = process.env.DRAMAME_START_IMAGE_URL?.trim() ?? "";
+
+  try {
+    const clipUrl = await generateClip(next.prompt, imageUrl, next.duration_seconds);
+    if (!clipUrl) throw new Error(clipFailureMessage(next.index));
+    next.status = "ready";
+    next.clip_url = clipUrl;
+    next.error = null;
+    await updateShot(db, videoId, next);
+    return finishStep(db, videoId, shots, next);
+  } catch (error) {
+    const message = redactKeys(error instanceof Error ? error.message : clipFailureMessage(next.index));
+    console.error(`Generation step failed for ${videoId} shot ${next.index}: ${message}`);
+    next.status = "failed";
+    next.clip_url = null;
+    next.error = message;
+    try {
+      await updateShot(db, videoId, next);
       await writeShotList(db, videoId, shots);
       await markFailed(db, videoId, message);
-      return;
+    } catch (updateError) {
+      const updateMessage = redactKeys(updateError instanceof Error ? updateError.message : "Could not store the failure.");
+      console.error(`Generation step could not mark ${videoId} shot ${next.index} failed: ${updateMessage}`);
+      throw error;
     }
-    shot.status = "ready";
-    shot.clip_url = clipUrl;
-    shot.error = null;
-    await updateShot(db, videoId, shot);
+    return stepResult(videoId, "failed", message, null, shots, next);
   }
+}
 
-  await writeShotList(db, videoId, shots);
-  const outputUrl = shots.find((shot) => shot.clip_url)?.clip_url ?? null;
-  await db
-    .prepare("UPDATE videos SET status = 'ready', output_url = ?, error = NULL, updated_at = ? WHERE id = ?")
-    .run(outputUrl, Date.now(), videoId);
+export async function markGenerationFailed(videoId: string, message: string, db?: StatementDb): Promise<void> {
+  const database = db ?? (await openDb());
+  const safe = redactKeys(message);
+  await database.prepare(`UPDATE shots SET status = 'failed', error = ? WHERE video_id = ? AND status = 'generating'`).run(safe, videoId);
+  await markFailed(database, videoId, safe);
+  const shots = await loadShots(database, videoId);
+  if (shots.length > 0) await writeShotList(database, videoId, shots);
 }
 
 export async function runPipeline(videoId: string): Promise<void> {
   try {
-    await execute(videoId);
+    await advanceGenerationStep(videoId);
   } catch (error) {
     const message = redactKeys(error instanceof Error ? error.message : "Pipeline failed.");
+    if (message === "Video not found.") {
+      console.error(`runPipeline failed for ${videoId}: video not found.`);
+      return;
+    }
     console.error(`runPipeline failed for ${videoId}: ${message}`);
     try {
-      await markFailed(await openDb(), videoId, message);
+      await markGenerationFailed(videoId, message);
     } catch (updateError) {
       const updateMessage = redactKeys(updateError instanceof Error ? updateError.message : "Could not store the failure.");
       console.error(`runPipeline could not mark ${videoId} failed: ${updateMessage}`);

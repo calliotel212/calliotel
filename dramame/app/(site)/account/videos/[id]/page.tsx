@@ -29,27 +29,20 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
         initialStatus={video.status}
         initialOutputUrl={video.outputUrl}
         initialError={video.error}
+        initialShots={video.shots.map((shot) => ({
+          index: shot.index,
+          prompt: shot.prompt,
+          durationSeconds: shot.duration_seconds,
+          status: shot.status,
+          clipUrl: shot.clip_url,
+          error: shot.error,
+        }))}
       >
         <p>Created {when(video.createdAt)}.</p>
         {video.seriesId ? <p>Series {video.seriesId}</p> : null}
         <h2>Script</h2>
         <p className="script-block">{video.scriptText}</p>
       </VideoStatusSection>
-      <h2>Shot list</h2>
-      {video.shots.length === 0 ? (
-        <p>No shots yet.</p>
-      ) : (
-        <ol className="shot-list">
-          {video.shots.map((shot) => (
-            <li key={shot.index}>
-              <p>{shot.prompt}</p>
-              <p className="hint">
-                {shot.duration_seconds} seconds{shot.status ? ` · ${shot.status}` : ""}
-              </p>
-            </li>
-          ))}
-        </ol>
-      )}
       <p>
         <Link href="/account/videos">Back to videos</Link>
       </p>
