@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { GenerateVideoButton } from "@/components/generate-video-button";
 import { planLabel } from "@/lib/plans";
 import { requireUser } from "@/lib/session";
 import { formatWhen } from "@/lib/time";
@@ -27,12 +28,13 @@ export default async function VideoPage({ params }: { params: Promise<{ id: stri
       {video.seriesId ? <p>Series {video.seriesId}</p> : null}
       <h2>Script</h2>
       <p className="script-block">{video.scriptText}</p>
-      {video.error ? <p className="form-error">{video.error}</p> : null}
+      {video.status === "queued" ? <GenerateVideoButton videoId={video.id} /> : null}
+      {video.status === "failed" && video.error ? (
+        <p className="form-error" role="alert">{video.error}</p>
+      ) : null}
       {video.status === "ready" ? (
         <video className="video-player" controls preload="none" src={video.outputUrl ?? ""} />
-      ) : (
-        <p>Generation is not wired yet.</p>
-      )}
+      ) : null}
       <h2>Shot list</h2>
       {video.shots.length === 0 ? (
         <p>No shots yet.</p>
