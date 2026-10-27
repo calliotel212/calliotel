@@ -68,7 +68,11 @@ function readShots(value: unknown): VideoShotView[] | null {
 }
 
 function shotNeedsRetry(shot: VideoShotView): boolean {
-  return shot.status === "failed" || shot.status === "generating" || shot.status === "assembling";
+  return shot.status === "failed";
+}
+
+function shotInFlight(shot: VideoShotView): boolean {
+  return shot.status === "generating" || shot.status === "assembling";
 }
 
 export function VideoStatusSection({
@@ -89,6 +93,8 @@ export function VideoStatusSection({
   const router = useRouter();
   const postingRef = useRef(false);
   const cancelRef = useRef(false);
+  const resumeOnceRef = useRef(false);
+  const startRef = useRef<(retry: boolean, resume?: boolean) => Promise<void>>(async () => {});
   const [status, setStatus] = useState(initialStatus);
   const [outputUrl, setOutputUrl] = useState(initialOutputUrl);
   const [error, setError] = useState(initialError);
@@ -112,12 +118,15 @@ export function VideoStatusSection({
         try {
           const response = await fetch(`/api/videos/${encodeURIComponent(videoId)}/status`, { cache: "no-store" });
           if (!response.ok || ignore) return;
-          const payload = readPayload(await response.json());
+          const body: unknown = await response.json();
+          const payload = readPayload(body);
           if (!payload || ignore) return;
           if ((status === "generating" || status === "assembling") && payload.status === "queued") return;
           setStatus(payload.status);
           setOutputUrl(payload.outputUrl);
           setError(payload.error);
+          const polledShots = body && typeof body === "object" ? readShots((body as { shots?: unknown }).shots) : null;
+          if (polledShots) setShots(polledShots);
           if (payload.status === "ready" || payload.status === "failed") router.refresh();
         } catch {
           // A dropped response should not stop polling. The next tick tries again.
@@ -131,34 +140,51 @@ export function VideoStatusSection({
     };
   }, [status, videoId, router]);
 
-  async function start(retry: boolean) {
+  useEffect(() => {
+    if (resumeOnceRef.current) return;
+    const active = initialStatus === "generating" || initialStatus === "assembling";
+    const needsResume =
+      initialShots.some((shot) => shot.status === "queued" || shotInFlight(shot)) ||
+      (initialShots.length > 0 && initialShots.every((shot) => shot.status === "ready"));
+    if (!active || !needsResume) return;
+    resumeOnceRef.current = true;
+    void startRef.current(false, true);
+  }, [initialShots, initialStatus, videoId]);
+
+  async function start(retry: boolean, resume = false) {
     if (postingRef.current) return;
-    if (status === "generating" || status === "assembling") return;
+    if (!resume && (status === "generating" || status === "assembling")) return;
+    if (!resume && status !== "failed" && shots.some(shotInFlight)) return;
     postingRef.current = true;
     setSubmitting(true);
     setNotice(null);
+    const bodyRetry = resume ? false : retry;
     try {
       const response = await fetch(`/api/generate/background/${encodeURIComponent(videoId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
-        body: JSON.stringify({ retry }),
+        body: JSON.stringify({ retry: bodyRetry }),
       });
       const payload: unknown = await response.json().catch(() => null);
       if (cancelRef.current) return;
       if (!response.ok) {
         const message = readMessage(payload) ?? "Generation failed.";
-        setNotice(message);
         const bodyStatus = payload && typeof payload === "object" ? (payload as { status?: unknown }).status : null;
-        if (message === "Video is already generating. Please wait.") setStatus("generating");
-        else if (isStatusName(bodyStatus)) setStatus(bodyStatus);
+        if (message === "Video is already generating. Please wait.") {
+          setStatus("generating");
+          if (!resume) setNotice(message);
+        } else {
+          setNotice(message);
+          if (isStatusName(bodyStatus)) setStatus(bodyStatus);
+        }
         const bodyShots = payload && typeof payload === "object" ? readShots((payload as { shots?: unknown }).shots) : null;
-        if (bodyShots) setShots(bodyShots);
+        if (bodyShots && !resume) setShots(bodyShots);
         return;
       }
       setError(null);
       setStatus("generating");
-      if (retry) {
+      if (retry && !resume) {
         setShots((current) =>
           current.map((shot) => (shotNeedsRetry(shot) ? { ...shot, status: "queued", error: null, clipUrl: null } : shot)),
         );
@@ -171,10 +197,14 @@ export function VideoStatusSection({
     }
   }
 
-  const busy = submitting || status === "generating" || status === "assembling";
+  startRef.current = start;
+
+  const active = status === "generating" || status === "assembling";
+  const flight = shots.some(shotInFlight);
+  const busy = submitting || active || (flight && status !== "failed");
   const brokenShot = shots.some(shotNeedsRetry);
   const showGenerate = !busy && status === "queued" && !brokenShot;
-  const showRetry = !busy && status !== "ready" && (status === "failed" || brokenShot);
+  const showRetry = !busy && !active && status !== "ready" && (status === "failed" || brokenShot);
 
   return (
     <>

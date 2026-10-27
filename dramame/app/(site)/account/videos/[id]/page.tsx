@@ -8,6 +8,7 @@ import { formatWhen } from "@/lib/time";
 import { getVideoForUser } from "@/lib/videos";
 
 export const metadata: Metadata = { title: "Video" };
+export const dynamic = "force-dynamic";
 
 function when(ms: number) {
   return ms > 0 ? `${formatWhen(ms)} UTC` : "—";

@@ -6,9 +6,11 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
   ALREADY_GENERATING_MESSAGE,
+  GENERATION_LOCK_STALE_MS,
   advanceGenerationStep,
   claimGeneration,
   markGenerationFailed,
+  resumeGeneration,
   runBackgroundShotLoop,
 } from "./pipeline.ts";
 
@@ -44,7 +46,9 @@ function createDb(): { database: DatabaseSync; db: MemoryDb } {
       output_url TEXT,
       error TEXT,
       shot_list_json TEXT,
-      updated_at INTEGER
+      updated_at INTEGER,
+      generation_lock TEXT,
+      generation_heartbeat INTEGER
     );
     CREATE TABLE shots (
       id TEXT PRIMARY KEY,
@@ -386,6 +390,13 @@ test("the video page starts one background generation and polls until ready or f
   assert.match(section, /5000/);
   assert.match(section, /status === "failed" \|\| brokenShot/);
   assert.match(section, /status === "generating" \|\| status === "assembling"/);
+  assert.match(section, /return shot\.status === "failed"/);
+  assert.equal(/shot\.status === "failed" \|\| shot\.status === "generating"/.test(section), false);
+  assert.match(section, /resumeOnceRef/);
+  assert.match(route, /resumeGeneration/);
+  assert.match(route, /retry: false/);
+  const statusRoute = fs.readFileSync(path.join(root, "app/api/videos/[id]/status/route.ts"), "utf8");
+  assert.match(statusRoute, /shots/);
   assert.match(route, /from "@vercel\/functions"/);
   assert.match(route, /waitUntil/);
   assert.match(route, /so the client does not have to keep the tab open/);
@@ -593,4 +604,131 @@ test("a thrown background loop marks the video failed and does not continue", as
   } finally {
     console.error = savedError;
   }
+});
+
+test("resume refuses a live run and does not reset the generating shot", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "queued");
+  insertShot(database, "v1", 1, "ready", "Prompt 1", "https://example.com/first.mp4");
+  insertShot(database, "v1", 2, "queued", "Prompt 2");
+  const claim = await claimGeneration("v1", db);
+  assert.equal(claim.ok, true);
+  if (!claim.ok) return;
+
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started = () => {};
+  const shotStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const calls: string[] = [];
+  const loop = runBackgroundShotLoop("v1", {
+    db,
+    lockToken: claim.lockToken,
+    heartbeatMs: 20,
+    generateClip: async (prompt) => {
+      calls.push(prompt);
+      started();
+      await gate;
+      return "https://example.com/second.mp4";
+    },
+  });
+
+  try {
+    await shotStarted;
+    database.prepare("UPDATE videos SET generation_heartbeat = ? WHERE id = ?").run(Date.now() - GENERATION_LOCK_STALE_MS - 5000, "v1");
+    const deadline = Date.now() + 1000;
+    let heartbeat = 0;
+    while (Date.now() < deadline) {
+      const row = database.prepare("SELECT generation_heartbeat FROM videos WHERE id = ?").get("v1") as { generation_heartbeat: number };
+      heartbeat = row.generation_heartbeat;
+      if (Date.now() - heartbeat < GENERATION_LOCK_STALE_MS) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(Date.now() - heartbeat < GENERATION_LOCK_STALE_MS);
+    const resume = await resumeGeneration("v1", db);
+    assert.equal(resume.ok, false);
+    if (!resume.ok) assert.equal(resume.message, ALREADY_GENERATING_MESSAGE);
+    const shots = shotsOf(database, "v1");
+    assert.equal(shots[0]?.status, "ready");
+    assert.equal(shots[0]?.clip_url, "https://example.com/first.mp4");
+    assert.equal(shots[1]?.status, "generating");
+  } finally {
+    release();
+  }
+
+  const result = await loop;
+  assert.deepEqual(calls, ["Prompt 2"]);
+  assert.equal(result.status, "ready");
+  assert.equal(shotsOf(database, "v1")[0]?.clip_url, "https://example.com/first.mp4");
+});
+
+test("a stale run resumes queued shots without requeuing a generating shot or regenerating a ready shot", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "generating");
+  database
+    .prepare("UPDATE videos SET generation_heartbeat = ?, generation_lock = ? WHERE id = ?")
+    .run(Date.now() - GENERATION_LOCK_STALE_MS - 1000, "dead-run", "v1");
+  insertShot(database, "v1", 1, "ready", "Prompt 1", "https://example.com/first.mp4");
+  insertShot(database, "v1", 2, "generating", "Prompt 2");
+  insertShot(database, "v1", 3, "queued", "Prompt 3");
+  const guarded = {
+    prepare(sql: string) {
+      const statement = db.prepare(sql);
+      return {
+        get: (...params: unknown[]) => statement.get(...params),
+        all: (...params: unknown[]) => statement.all(...params),
+        run: (...params: unknown[]) => {
+          if (/SET status = 'queued'/.test(sql) && /generating/.test(sql)) {
+            return Promise.reject(new Error("generating shot was reset to queued"));
+          }
+          return statement.run(...params);
+        },
+      };
+    },
+  };
+  const resume = await resumeGeneration("v1", guarded);
+  assert.equal(resume.ok, true);
+  if (!resume.ok) return;
+  const calls: string[] = [];
+  const result = await runBackgroundShotLoop("v1", {
+    db: guarded,
+    retry: false,
+    lockToken: resume.lockToken,
+    generateClip: async (prompt) => {
+      calls.push(prompt);
+      const shot = shotsOf(database, "v1").find((item) => item.prompt === prompt);
+      assert.equal(shot?.status, "generating");
+      return `https://example.com/${calls.length}.mp4`;
+    },
+  });
+  assert.deepEqual(calls, ["Prompt 2", "Prompt 3"]);
+  const shots = shotsOf(database, "v1");
+  assert.equal(shots[0]?.status, "ready");
+  assert.equal(shots[0]?.clip_url, "https://example.com/first.mp4");
+  assert.equal(shots[1]?.status, "ready");
+  assert.equal(shots[1]?.clip_url, "https://example.com/1.mp4");
+  assert.equal(shots[2]?.status, "ready");
+  assert.equal(result.status, "ready");
+  assert.equal(result.outputUrl, "https://example.com/first.mp4");
+});
+
+test("only one resume takes over a stale generating video", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "generating");
+  database.prepare("UPDATE videos SET generation_heartbeat = ? WHERE id = ?").run(Date.now() - GENERATION_LOCK_STALE_MS - 1000, "v1");
+  insertShot(database, "v1", 1, "ready", "Prompt 1", "https://example.com/first.mp4");
+  insertShot(database, "v1", 2, "generating", "Prompt 2");
+  const claims = await Promise.all([resumeGeneration("v1", db), resumeGeneration("v1", db)]);
+  const winners = claims.filter((claim) => claim.ok);
+  const losers = claims.filter((claim) => !claim.ok);
+  assert.equal(winners.length, 1);
+  assert.equal(losers.length, 1);
+  assert.equal(losers[0] && "message" in losers[0] ? losers[0].message : "", ALREADY_GENERATING_MESSAGE);
+  assert.equal(shotsOf(database, "v1")[0]?.status, "ready");
+  assert.equal(shotsOf(database, "v1")[0]?.clip_url, "https://example.com/first.mp4");
+  assert.equal(shotsOf(database, "v1")[1]?.status, "generating");
+  assert.equal(videoOf(database, "v1").status, "generating");
 });

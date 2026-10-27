@@ -63,6 +63,8 @@ export type GenerationStepResult = {
 type StepOptions = {
   retry?: boolean;
   db?: StatementDb;
+  lockToken?: string;
+  heartbeatMs?: number;
   generateClip?: (prompt: string, imageUrl: string, durationSeconds: number) => Promise<string | null>;
 };
 
@@ -371,28 +373,45 @@ export async function advanceGenerationStep(videoId: string, options?: StepOptio
     return stepResult(videoId, "failed", redactKeys(message), null, shots, existingFailure);
   }
 
-  const next = shots.find((shot) => shot.status === "queued");
+  if (options?.lockToken && !(await holdsGenerationLock(db, videoId, options.lockToken))) {
+    return stepResult(videoId, status === "assembling" ? "assembling" : "generating", null, null, shots, null);
+  }
+
+  // A resumed run keeps a shot that is already generating. Resetting it to queued
+  // would drop an in-flight clip and start a second fal.ai call.
+  const inFlight = options?.lockToken
+    ? shots.find((shot) => shot.status === "generating" || shot.status === "assembling")
+    : undefined;
+  const next = inFlight ?? shots.find((shot) => shot.status === "queued");
   if (!next) return finishStep(db, videoId, shots, null);
 
   await markVideoGenerating(db, videoId);
-  const claim = await db
-    .prepare(`UPDATE shots SET status = 'generating', error = NULL WHERE video_id = ? AND "index" = ? AND status = 'queued'`)
-    .run(videoId, next.index);
-  if (changedRows(claim) < 1) {
-    const fresh = await loadShots(db, videoId);
-    const stillQueued = fresh.find((shot) => shot.index === next.index && shot.status === "queued");
-    if (!stillQueued) return finishStep(db, videoId, fresh, null);
+  if (!inFlight) {
+    const claim = await db
+      .prepare(`UPDATE shots SET status = 'generating', error = NULL WHERE video_id = ? AND "index" = ? AND status = 'queued'`)
+      .run(videoId, next.index);
+    if (changedRows(claim) < 1) {
+      const fresh = await loadShots(db, videoId);
+      const stillQueued = fresh.find((shot) => shot.index === next.index && shot.status === "queued");
+      if (!stillQueued) return finishStep(db, videoId, fresh, null);
+    }
+    next.status = "generating";
+    next.error = null;
+    await writeShotList(db, videoId, shots);
   }
 
-  next.status = "generating";
-  next.error = null;
-  await writeShotList(db, videoId, shots);
+  if (options?.lockToken && !(await holdsGenerationLock(db, videoId, options.lockToken))) {
+    return stepResult(videoId, "generating", null, null, shots, null);
+  }
 
   const generateClip = options?.generateClip ?? (await import("@/lib/video-generator")).generateClip;
   const imageUrl = process.env.DRAMAME_START_IMAGE_URL?.trim() ?? "";
 
   try {
     const clipUrl = await generateClip(next.prompt, imageUrl, next.duration_seconds);
+    if (options?.lockToken && !(await holdsGenerationLock(db, videoId, options.lockToken))) {
+      return stepResult(videoId, "generating", null, null, shots, null);
+    }
     if (!clipUrl) throw new Error(clipFailureMessage(next.index));
     next.status = "ready";
     next.clip_url = clipUrl;
@@ -429,9 +448,70 @@ export async function markGenerationFailed(videoId: string, message: string, db?
 
 export const ALREADY_GENERATING_MESSAGE = "Video is already generating. Please wait.";
 
+// A live run refreshes this while fal.ai is in flight. A visit can resume only after the beats stop.
+export const GENERATION_LOCK_STALE_MS = 10_000;
+const GENERATION_HEARTBEAT_MS = 3_000;
+
 export type GenerationClaim =
-  | { ok: true; previousStatus: "queued" | "failed" }
+  | { ok: true; previousStatus: "queued" | "failed" | "generating" | "assembling"; lockToken: string }
   | { ok: false; message: string };
+
+type LockRow = {
+  status?: unknown;
+  generation_lock?: unknown;
+  generation_heartbeat?: unknown;
+};
+
+async function holdsGenerationLock(db: StatementDb, videoId: string, lockToken: string): Promise<boolean> {
+  const row = (await db.prepare(`SELECT status, generation_lock FROM videos WHERE id = ?`).get(videoId)) as LockRow | undefined;
+  return row?.generation_lock === lockToken && (row.status === "generating" || row.status === "assembling");
+}
+
+function armGenerationHeartbeat(
+  db: StatementDb | undefined,
+  videoId: string,
+  lockToken: string | undefined,
+  heartbeatMs: number | undefined,
+): ReturnType<typeof setInterval> | null {
+  if (!db || !lockToken) return null;
+  const interval = heartbeatMs && heartbeatMs > 0 ? heartbeatMs : GENERATION_HEARTBEAT_MS;
+  const beat = () => {
+    void (async () => {
+      try {
+        await db
+          .prepare(
+            `UPDATE videos SET generation_heartbeat = ?
+             WHERE id = ? AND generation_lock = ? AND status IN ('generating', 'assembling')`,
+          )
+          .run(Date.now(), videoId, lockToken);
+      } catch {
+        // A missed beat lets the lock expire so a later visit can resume the queued shots.
+      }
+    })();
+  };
+  beat();
+  const timer = setInterval(beat, interval);
+  const nodeTimer = timer as unknown as { unref?: () => void };
+  nodeTimer.unref?.();
+  return timer;
+}
+
+async function generationSnapshot(
+  db: StatementDb,
+  videoId: string,
+  fallback: GenerationStepResult | null,
+): Promise<GenerationStepResult> {
+  if (fallback && (fallback.status === "ready" || fallback.status === "failed")) return fallback;
+  const video = await loadVideo(db, videoId);
+  const shots = await loadShots(db, videoId);
+  const status = typeof video?.status === "string" ? video.status : "";
+  if (status === "ready" || status === "failed" || status === "assembling" || status === "generating" || status === "queued") {
+    const error = typeof video?.error === "string" ? video.error : null;
+    const outputUrl = typeof video?.output_url === "string" ? video.output_url : null;
+    return stepResult(videoId, status, error, outputUrl, shots, null);
+  }
+  return fallback ?? stepResult(videoId, "generating", null, null, shots, null);
+}
 
 // Claims the video before any fal.ai call. A second Generate loses the conditional update and must not start another loop.
 export async function claimGeneration(videoId: string, db?: StatementDb): Promise<GenerationClaim> {
@@ -446,12 +526,14 @@ export async function claimGeneration(videoId: string, db?: StatementDb): Promis
     return { ok: false, message: status === "ready" ? "Video is already ready." : "Video cannot be generated right now." };
   }
 
+  const lockToken = randomUUID();
+  const now = Date.now();
   const result = await database
     .prepare(
-      `UPDATE videos SET status = 'generating', error = NULL, updated_at = ?
+      `UPDATE videos SET status = 'generating', error = NULL, updated_at = ?, generation_lock = ?, generation_heartbeat = ?
        WHERE id = ? AND status IN ('queued', 'failed')`,
     )
-    .run(Date.now(), videoId);
+    .run(now, lockToken, now, videoId);
   if (changedRows(result) < 1) {
     const fresh = await loadVideo(database, videoId);
     const freshStatus = typeof fresh?.status === "string" ? fresh.status : "";
@@ -460,58 +542,117 @@ export async function claimGeneration(videoId: string, db?: StatementDb): Promis
     }
     return { ok: false, message: freshStatus === "ready" ? "Video is already ready." : "Video cannot be generated right now." };
   }
-  return { ok: true, previousStatus: status };
+  return { ok: true, previousStatus: status, lockToken };
+}
+
+// Takes over a generating video whose background run has stopped heartbeating.
+// Does not change shot rows: a ready shot stays ready, and a generating shot stays generating.
+export async function resumeGeneration(videoId: string, db?: StatementDb): Promise<GenerationClaim> {
+  const database = db ?? (await openDb());
+  const row = (await database
+    .prepare(`SELECT status, generation_lock, generation_heartbeat FROM videos WHERE id = ?`)
+    .get(videoId)) as LockRow | undefined;
+  if (!row) throw new Error("Video not found.");
+  const status = typeof row.status === "string" ? row.status : "";
+  if (status !== "generating" && status !== "assembling") {
+    if (status === "ready") return { ok: false, message: "Video is already ready." };
+    return { ok: false, message: status === "queued" || status === "failed" ? ALREADY_GENERATING_MESSAGE : "Video cannot be generated right now." };
+  }
+
+  const heartbeat = asNumber(row.generation_heartbeat);
+  const staleBefore = Date.now() - GENERATION_LOCK_STALE_MS;
+  if (heartbeat !== null && heartbeat > staleBefore) {
+    return { ok: false, message: ALREADY_GENERATING_MESSAGE };
+  }
+
+  const lockToken = randomUUID();
+  const now = Date.now();
+  const result = await database
+    .prepare(
+      `UPDATE videos SET generation_lock = ?, generation_heartbeat = ?, updated_at = ?
+       WHERE id = ? AND status IN ('generating', 'assembling')
+         AND (generation_heartbeat IS NULL OR generation_heartbeat <= ?)`,
+    )
+    .run(lockToken, now, now, videoId, staleBefore);
+  if (changedRows(result) < 1) {
+    return { ok: false, message: ALREADY_GENERATING_MESSAGE };
+  }
+  return { ok: true, previousStatus: status, lockToken };
 }
 
 const BACKGROUND_STEP_LIMIT = 30;
 
 // Runs every queued shot, one after another, until the video is ready or a shot fails.
 export async function runBackgroundShotLoop(videoId: string, options?: StepOptions): Promise<GenerationStepResult> {
-  const db = options?.db;
+  const db = options?.db ?? (options?.lockToken ? await openDb() : undefined);
+  const timer = armGenerationHeartbeat(db, videoId, options?.lockToken, options?.heartbeatMs);
   const retry = Boolean(options?.retry);
   let latest: GenerationStepResult | null = null;
   try {
-    for (let step = 0; step < BACKGROUND_STEP_LIMIT; step += 1) {
-      const previous = latest;
-      latest = await advanceGenerationStep(videoId, {
-        db,
-        generateClip: options?.generateClip,
-        retry: retry && step === 0,
-      });
-      if (latest.status === "ready" || latest.status === "failed") return latest;
-      if (latest.remaining <= 0 || (previous && previous.remaining === latest.remaining && previous.status === latest.status)) {
-        break;
-      }
-    }
-    const message = latest?.error ?? "Generation did not finish.";
-    await markGenerationFailed(videoId, message, db);
-    return {
-      id: videoId,
-      status: "failed",
-      error: redactKeys(message),
-      outputUrl: null,
-      remaining: latest?.remaining ?? 0,
-      shot: latest?.shot ?? null,
-      shots: latest?.shots ?? [],
-    };
-  } catch (error) {
-    const message = redactKeys(error instanceof Error ? error.message : "Generation failed.");
-    console.error(`Background generation failed for ${videoId}: ${message}`);
     try {
+      for (let step = 0; step < BACKGROUND_STEP_LIMIT; step += 1) {
+        if (db && options?.lockToken && !(await holdsGenerationLock(db, videoId, options.lockToken))) {
+          return generationSnapshot(db, videoId, latest);
+        }
+        const previous = latest;
+        latest = await advanceGenerationStep(videoId, {
+          db,
+          generateClip: options?.generateClip,
+          retry: retry && step === 0,
+          lockToken: options?.lockToken,
+        });
+        if (latest.status === "ready" || latest.status === "failed") return latest;
+        if (db && options?.lockToken && !(await holdsGenerationLock(db, videoId, options.lockToken))) {
+          return latest;
+        }
+        const completedShot = latest.shot?.status === "ready";
+        const repeated =
+          completedShot &&
+          previous?.shot?.status === "ready" &&
+          previous.shot.index === latest.shot?.index &&
+          previous.remaining === latest.remaining &&
+          previous.status === latest.status;
+        if (
+          repeated ||
+          (!completedShot &&
+            (latest.remaining <= 0 ||
+              (previous !== null && previous.remaining === latest.remaining && previous.status === latest.status)))
+        ) {
+          break;
+        }
+      }
+      const message = latest?.error ?? "Generation did not finish.";
       await markGenerationFailed(videoId, message, db);
-    } catch (updateError) {
-      const updateMessage = redactKeys(updateError instanceof Error ? updateError.message : "Could not store the failure.");
-      console.error(`Background generation could not mark ${videoId} failed: ${updateMessage}`);
+      return {
+        id: videoId,
+        status: "failed",
+        error: redactKeys(message),
+        outputUrl: null,
+        remaining: latest?.remaining ?? 0,
+        shot: latest?.shot ?? null,
+        shots: latest?.shots ?? [],
+      };
+    } catch (error) {
+      const message = redactKeys(error instanceof Error ? error.message : "Generation failed.");
+      console.error(`Background generation failed for ${videoId}: ${message}`);
+      try {
+        await markGenerationFailed(videoId, message, db);
+      } catch (updateError) {
+        const updateMessage = redactKeys(updateError instanceof Error ? updateError.message : "Could not store the failure.");
+        console.error(`Background generation could not mark ${videoId} failed: ${updateMessage}`);
+      }
+      return {
+        id: videoId,
+        status: "failed",
+        error: message,
+        outputUrl: null,
+        remaining: latest?.remaining ?? 0,
+        shot: latest?.shot ?? null,
+        shots: latest?.shots ?? [],
+      };
     }
-    return {
-      id: videoId,
-      status: "failed",
-      error: message,
-      outputUrl: null,
-      remaining: latest?.remaining ?? 0,
-      shot: latest?.shot ?? null,
-      shots: latest?.shots ?? [],
-    };
+  } finally {
+    if (timer) clearInterval(timer);
   }
 }
 

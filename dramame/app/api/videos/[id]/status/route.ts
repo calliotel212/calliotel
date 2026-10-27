@@ -21,6 +21,14 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       status: video.status,
       outputUrl: video.outputUrl,
       error: video.error,
+      shots: video.shots.map((shot) => ({
+        index: shot.index,
+        prompt: shot.prompt,
+        durationSeconds: shot.duration_seconds,
+        status: shot.status,
+        clipUrl: shot.clip_url,
+        error: shot.error,
+      })),
     },
     { headers: { "Cache-Control": "no-store" } },
   );

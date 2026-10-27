@@ -181,6 +181,7 @@ export type VideoStatusSnapshot = {
   status: VideoStatus;
   outputUrl: string | null;
   error: string | null;
+  shots: StoredShot[];
 };
 
 export async function getVideoStatusForUser(userId: string, videoId: string): Promise<VideoStatusSnapshot | null> {
@@ -193,5 +194,6 @@ export async function getVideoStatusForUser(userId: string, videoId: string): Pr
     status: asStatus(row.status),
     outputUrl: row.output_url,
     error: row.error,
+    shots: await shotsFor(row.id),
   };
 }

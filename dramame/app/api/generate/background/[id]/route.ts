@@ -1,6 +1,6 @@
 import { waitUntil } from "@vercel/functions";
 import { NextResponse } from "next/server";
-import { ALREADY_GENERATING_MESSAGE, claimGeneration, markGenerationFailed, runBackgroundShotLoop } from "@/lib/pipeline";
+import { claimGeneration, markGenerationFailed, resumeGeneration, runBackgroundShotLoop } from "@/lib/pipeline";
 import { getCurrentUser } from "@/lib/session";
 import { getVideoForUser } from "@/lib/videos";
 
@@ -40,46 +40,63 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!video) return NextResponse.json({ error: "Video not found." }, { status: 404 });
 
   const retry = await wantsRetry(request);
+  const noStore = { "Cache-Control": "no-store" };
+
+  let lockToken: string | null = null;
+  let backgroundRetry = false;
 
   if (video.status === "generating" || video.status === "assembling") {
-    return NextResponse.json(
-      { error: ALREADY_GENERATING_MESSAGE, message: ALREADY_GENERATING_MESSAGE },
-      { status: 400, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-  if (video.status !== "queued" && video.status !== "failed") {
+    try {
+      const resume = await resumeGeneration(video.id);
+      if (!resume.ok) {
+        return NextResponse.json({ error: resume.message, message: resume.message }, { status: 400, headers: noStore });
+      }
+      lockToken = resume.lockToken;
+      // A reload must not requeue. retry: false leaves a generating shot generating.
+      backgroundRetry = false;
+    } catch (error) {
+      const message = redactSecrets(error instanceof Error ? error.message : "Generation failed.");
+      console.error(`POST /api/generate/background/${video.id} failed: ${message}`);
+      return NextResponse.json(
+        { id: video.id, status: video.status, error: message, message },
+        { status: 500, headers: noStore },
+      );
+    }
+  } else if (video.status !== "queued" && video.status !== "failed") {
     const message = video.status === "ready" ? "Video is already ready." : "Video cannot be generated right now.";
-    return NextResponse.json({ error: message, message }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: message, message }, { status: 400, headers: noStore });
   }
 
   try {
-    const claim = await claimGeneration(video.id);
-    if (!claim.ok) {
-      return NextResponse.json(
-        { error: claim.message, message: claim.message },
-        { status: 400, headers: { "Cache-Control": "no-store" } },
-      );
+    if (!lockToken) {
+      const claim = await claimGeneration(video.id);
+      if (!claim.ok) {
+        return NextResponse.json({ error: claim.message, message: claim.message }, { status: 400, headers: noStore });
+      }
+      lockToken = claim.lockToken;
+      backgroundRetry = retry || claim.previousStatus === "failed";
     }
 
     // This uses Vercel's `waitUntil` so the client does not have to keep the tab open.
-    waitUntil(runBackgroundShotLoop(video.id, { retry: retry || claim.previousStatus === "failed" }));
+    // Resume passes retry: false so a generating shot is not reset to queued.
+    waitUntil(runBackgroundShotLoop(video.id, { retry: backgroundRetry, lockToken }));
 
-    return NextResponse.json(
-      { id: video.id, status: "generating" },
-      { status: 200, headers: { "Cache-Control": "no-store" } },
-    );
+    return NextResponse.json({ id: video.id, status: "generating" }, { status: 200, headers: noStore });
   } catch (error) {
     const message = redactSecrets(error instanceof Error ? error.message : "Generation failed.");
     console.error(`POST /api/generate/background/${video.id} failed: ${message}`);
-    try {
-      await markGenerationFailed(video.id, message);
-    } catch (updateError) {
-      const updateMessage = redactSecrets(updateError instanceof Error ? updateError.message : "Could not store the failure.");
-      console.error(`POST /api/generate/background/${video.id} could not mark the video failed: ${updateMessage}`);
+    if (video.status !== "generating" && video.status !== "assembling") {
+      try {
+        await markGenerationFailed(video.id, message);
+      } catch (updateError) {
+        const updateMessage = redactSecrets(updateError instanceof Error ? updateError.message : "Could not store the failure.");
+        console.error(`POST /api/generate/background/${video.id} could not mark the video failed: ${updateMessage}`);
+      }
     }
+    const reportedStatus = video.status === "generating" || video.status === "assembling" ? video.status : "failed";
     return NextResponse.json(
-      { id: video.id, status: "failed", error: message, message },
-      { status: 500, headers: { "Cache-Control": "no-store" } },
+      { id: video.id, status: reportedStatus, error: message, message },
+      { status: 500, headers: noStore },
     );
   }
 }
