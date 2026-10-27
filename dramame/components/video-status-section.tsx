@@ -6,7 +6,6 @@ import { GenerateVideoButton } from "@/components/generate-video-button";
 import { PopcornLoader } from "@/components/popcorn-loader";
 
 const POLL_MS = 5000;
-const STEP_DELAY_MS = 500;
 const ACTIVE_STATUSES = new Set(["queued", "generating", "assembling"]);
 
 type VideoStatusName = "queued" | "generating" | "assembling" | "ready" | "failed";
@@ -26,11 +25,6 @@ type StatusPayload = {
   error: string | null;
 };
 
-type StepPayload = StatusPayload & {
-  remaining: number;
-  shots: VideoShotView[] | null;
-};
-
 function isStatusName(value: unknown): value is VideoStatusName {
   return value === "queued" || value === "generating" || value === "assembling" || value === "ready" || value === "failed";
 }
@@ -44,6 +38,14 @@ function readPayload(value: unknown): StatusPayload | null {
     outputUrl: typeof record.outputUrl === "string" ? record.outputUrl : null,
     error: typeof record.error === "string" ? record.error : null,
   };
+}
+
+function readMessage(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  if (typeof record.message === "string" && record.message.trim()) return record.message;
+  if (typeof record.error === "string" && record.error.trim()) return record.error;
+  return null;
 }
 
 function readShots(value: unknown): VideoShotView[] | null {
@@ -63,14 +65,6 @@ function readShots(value: unknown): VideoShotView[] | null {
     });
   }
   return shots;
-}
-
-function readStep(value: unknown): StepPayload | null {
-  const payload = readPayload(value);
-  if (!payload || !value || typeof value !== "object") return null;
-  const record = value as Record<string, unknown>;
-  const remaining = typeof record.remaining === "number" && Number.isFinite(record.remaining) ? record.remaining : 0;
-  return { ...payload, remaining, shots: readShots(record.shots) };
 }
 
 function shotNeedsRetry(shot: VideoShotView): boolean {
@@ -93,88 +87,19 @@ export function VideoStatusSection({
   children?: ReactNode;
 }) {
   const router = useRouter();
-  const liveRef = useRef(false);
+  const postingRef = useRef(false);
   const cancelRef = useRef(false);
-  const timerRef = useRef<number | null>(null);
-  const runRef = useRef<(retry: boolean) => Promise<void>>(async () => {});
   const [status, setStatus] = useState(initialStatus);
   const [outputUrl, setOutputUrl] = useState(initialOutputUrl);
   const [error, setError] = useState(initialError);
+  const [notice, setNotice] = useState<string | null>(null);
   const [shots, setShots] = useState(initialShots);
-  const [live, setLive] = useState(false);
-  const [mode, setMode] = useState<"generate" | "retry" | null>(null);
-
-  function stopLoop() {
-    liveRef.current = false;
-    setLive(false);
-    if (timerRef.current !== null) {
-      window.clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-  }
-
-  runRef.current = async (retry: boolean) => {
-    if (cancelRef.current) return;
-    try {
-      const response = await fetch(`/api/generate/step/${encodeURIComponent(videoId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ retry }),
-      });
-      const payload = readStep(await response.json().catch(() => null));
-      if (cancelRef.current) return;
-      if (!payload) {
-        stopLoop();
-        router.refresh();
-        return;
-      }
-      setStatus(payload.status === "failed" || !response.ok ? "failed" : payload.status);
-      setOutputUrl(payload.outputUrl);
-      setError(payload.error ?? (payload.status === "failed" || !response.ok ? "Generation failed." : null));
-      if (payload.shots) setShots(payload.shots);
-      const failed = !response.ok || payload.status === "failed";
-      const finished = payload.status === "ready" || payload.remaining <= 0;
-      if (failed || finished) {
-        stopLoop();
-        router.refresh();
-        return;
-      }
-      timerRef.current = window.setTimeout(() => {
-        void runRef.current(false);
-      }, STEP_DELAY_MS);
-    } catch {
-      if (cancelRef.current) return;
-      stopLoop();
-      router.refresh();
-    }
-  };
-
-  function start(retry: boolean) {
-    if (liveRef.current) return;
-    liveRef.current = true;
-    cancelRef.current = false;
-    setLive(true);
-    setMode(retry ? "retry" : "generate");
-    setError(null);
-    setStatus("generating");
-    if (retry) {
-      setShots((current) =>
-        current.map((shot) => (shotNeedsRetry(shot) ? { ...shot, status: "queued", error: null, clipUrl: null } : shot)),
-      );
-    }
-    void runRef.current(retry);
-  }
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     cancelRef.current = false;
     return () => {
       cancelRef.current = true;
-      liveRef.current = false;
-      if (timerRef.current !== null) {
-        window.clearTimeout(timerRef.current);
-        timerRef.current = null;
-      }
     };
   }, [videoId]);
 
@@ -189,10 +114,11 @@ export function VideoStatusSection({
           if (!response.ok || ignore) return;
           const payload = readPayload(await response.json());
           if (!payload || ignore) return;
-          if (liveRef.current && payload.status === "queued") return;
+          if ((status === "generating" || status === "assembling") && payload.status === "queued") return;
           setStatus(payload.status);
           setOutputUrl(payload.outputUrl);
           setError(payload.error);
+          if (payload.status === "ready" || payload.status === "failed") router.refresh();
         } catch {
           // A dropped response should not stop polling. The next tick tries again.
         }
@@ -203,11 +129,52 @@ export function VideoStatusSection({
       ignore = true;
       clearInterval(intervalId);
     };
-  }, [status, videoId]);
+  }, [status, videoId, router]);
 
+  async function start(retry: boolean) {
+    if (postingRef.current) return;
+    if (status === "generating" || status === "assembling") return;
+    postingRef.current = true;
+    setSubmitting(true);
+    setNotice(null);
+    try {
+      const response = await fetch(`/api/generate/background/${encodeURIComponent(videoId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ retry }),
+      });
+      const payload: unknown = await response.json().catch(() => null);
+      if (cancelRef.current) return;
+      if (!response.ok) {
+        const message = readMessage(payload) ?? "Generation failed.";
+        setNotice(message);
+        const bodyStatus = payload && typeof payload === "object" ? (payload as { status?: unknown }).status : null;
+        if (message === "Video is already generating. Please wait.") setStatus("generating");
+        else if (isStatusName(bodyStatus)) setStatus(bodyStatus);
+        const bodyShots = payload && typeof payload === "object" ? readShots((payload as { shots?: unknown }).shots) : null;
+        if (bodyShots) setShots(bodyShots);
+        return;
+      }
+      setError(null);
+      setStatus("generating");
+      if (retry) {
+        setShots((current) =>
+          current.map((shot) => (shotNeedsRetry(shot) ? { ...shot, status: "queued", error: null, clipUrl: null } : shot)),
+        );
+      }
+    } catch {
+      if (!cancelRef.current) setNotice("Generation failed.");
+    } finally {
+      postingRef.current = false;
+      setSubmitting(false);
+    }
+  }
+
+  const busy = submitting || status === "generating" || status === "assembling";
   const brokenShot = shots.some(shotNeedsRetry);
-  const showGenerate = !live && status === "queued" && !brokenShot;
-  const showRetry = !live && !showGenerate && status !== "ready" && (status === "failed" || status === "generating" || status === "assembling" || brokenShot);
+  const showGenerate = !busy && status === "queued" && !brokenShot;
+  const showRetry = !busy && status !== "ready" && (status === "failed" || brokenShot);
 
   return (
     <>
@@ -216,19 +183,24 @@ export function VideoStatusSection({
       </p>
       {children}
       <div className="video-actions">
-        {showGenerate ? <GenerateVideoButton pending={false} onClick={() => start(false)} /> : null}
+        {showGenerate ? <GenerateVideoButton pending={false} onClick={() => void start(false)} /> : null}
         {showRetry ? (
-          <button className="button button-primary" type="button" onClick={() => start(true)}>
+          <button className="button button-primary" type="button" onClick={() => void start(true)}>
             Retry failed shots
           </button>
         ) : null}
-        {live ? (
+        {busy ? (
           <button className="button button-primary is-loading" type="button" disabled aria-busy="true">
             <PopcornLoader size="sm" label="Generating video" />
-            {mode === "retry" ? "Retry failed shots" : "Generate video"}
+            Generating...
           </button>
         ) : null}
       </div>
+      {notice ? (
+        <p className="form-error" role="alert">
+          {notice}
+        </p>
+      ) : null}
       {status === "failed" && error ? (
         <p className="form-error" role="alert">
           {error}

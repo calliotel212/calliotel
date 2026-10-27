@@ -4,7 +4,13 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { advanceGenerationStep, markGenerationFailed } from "./pipeline.ts";
+import {
+  ALREADY_GENERATING_MESSAGE,
+  advanceGenerationStep,
+  claimGeneration,
+  markGenerationFailed,
+  runBackgroundShotLoop,
+} from "./pipeline.ts";
 
 type MemoryDb = {
   prepare(sql: string): {
@@ -368,15 +374,223 @@ test("markGenerationFailed stores the error on the in-progress shot and the vide
   assert.equal(videoOf(database, "v1").error, "Kling timed out");
 });
 
-test("the video page loops one step at a time and can retry", () => {
+test("the video page starts one background generation and polls until ready or failed", () => {
   const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
   const section = fs.readFileSync(path.join(root, "components/video-status-section.tsx"), "utf8");
-  const route = fs.readFileSync(path.join(root, "app/api/generate/step/[id]/route.ts"), "utf8");
+  const route = fs.readFileSync(path.join(root, "app/api/generate/background/[id]/route.ts"), "utf8");
+  const stepRoute = fs.readFileSync(path.join(root, "app/api/generate/step/[id]/route.ts"), "utf8");
   assert.match(section, /Retry failed shots/);
-  assert.match(section, /\/api\/generate\/step\//);
-  assert.match(section, /setTimeout/);
+  assert.match(section, /Generating\.\.\./);
+  assert.match(section, /\/api\/generate\/background\//);
+  assert.equal(section.includes("/api/generate/step/"), false);
   assert.match(section, /5000/);
-  assert.match(route, /advanceGenerationStep/);
-  assert.match(route, /maxDuration = 300/);
-  assert.match(route, /markGenerationFailed/);
+  assert.match(section, /status === "failed" \|\| brokenShot/);
+  assert.match(section, /status === "generating" \|\| status === "assembling"/);
+  assert.match(route, /from "@vercel\/functions"/);
+  assert.match(route, /waitUntil/);
+  assert.match(route, /so the client does not have to keep the tab open/);
+  assert.match(route, /maxDuration = 900/);
+  assert.match(route, /claimGeneration/);
+  assert.match(route, /runBackgroundShotLoop/);
+  assert.equal(route.includes("generateClip"), false);
+  const refused = route.indexOf("status: 400");
+  const claimed = route.indexOf("claimGeneration(");
+  const background = route.indexOf("waitUntil(");
+  assert.ok(refused !== -1 && claimed !== -1 && background !== -1);
+  assert.ok(refused < background);
+  assert.ok(claimed < background);
+  assert.match(stepRoute, /advanceGenerationStep/);
+  assert.match(stepRoute, /maxDuration = 300/);
+  assert.match(stepRoute, /markGenerationFailed/);
+});
+
+test("a second claim does not start another generation while one is in progress", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "queued");
+  insertShot(database, "v1", 1, "queued", "Prompt 1");
+  insertShot(database, "v1", 2, "queued", "Prompt 2");
+
+  const first = await claimGeneration("v1", db);
+  assert.equal(first.ok, true);
+  if (first.ok) assert.equal(first.previousStatus, "queued");
+  assert.equal(videoOf(database, "v1").status, "generating");
+  assert.equal(videoOf(database, "v1").error, null);
+
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let started = () => {};
+  const shotStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const calls: string[] = [];
+  const loop = runBackgroundShotLoop("v1", {
+    db,
+    generateClip: async (prompt) => {
+      calls.push(prompt);
+      if (calls.length === 1) {
+        started();
+        await gate;
+      }
+      return `https://example.com/${calls.length}.mp4`;
+    },
+  });
+
+  await shotStarted;
+  const second = await claimGeneration("v1", db);
+  assert.equal(second.ok, false);
+  if (!second.ok) assert.equal(second.message, ALREADY_GENERATING_MESSAGE);
+  assert.equal(ALREADY_GENERATING_MESSAGE, "Video is already generating. Please wait.");
+  let extraCalls = 0;
+  if (second.ok) {
+    await runBackgroundShotLoop("v1", {
+      db,
+      generateClip: async () => {
+        extraCalls += 1;
+        return "https://example.com/extra.mp4";
+      },
+    });
+  }
+  release();
+  const result = await loop;
+  assert.equal(extraCalls, 0);
+  assert.deepEqual(calls, ["Prompt 1", "Prompt 2"]);
+  assert.equal(result.status, "ready");
+  assert.equal(videoOf(database, "v1").status, "ready");
+  assert.equal(shotsOf(database, "v1").every((shot) => shot.status === "ready"), true);
+});
+
+test("claim refuses generating, assembling, and ready without changing them", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "busy", "generating");
+  insertShot(database, "busy", 1, "queued", "Prompt 1");
+  const generating = await claimGeneration("busy", db);
+  assert.equal(generating.ok, false);
+  if (!generating.ok) assert.equal(generating.message, "Video is already generating. Please wait.");
+  assert.equal(videoOf(database, "busy").status, "generating");
+
+  insertVideo(database, "assemble", "assembling");
+  const assembling = await claimGeneration("assemble", db);
+  assert.equal(assembling.ok, false);
+  if (!assembling.ok) assert.equal(assembling.message, "Video is already generating. Please wait.");
+  assert.equal(videoOf(database, "assemble").status, "assembling");
+
+  insertVideo(database, "done", "ready", null, "https://example.com/done.mp4");
+  const ready = await claimGeneration("done", db);
+  assert.equal(ready.ok, false);
+  if (!ready.ok) assert.equal(ready.message, "Video is already ready.");
+  assert.equal(videoOf(database, "done").status, "ready");
+  assert.equal(videoOf(database, "done").output_url, "https://example.com/done.mp4");
+});
+
+test("parallel claims let only one generation proceed", async () => {
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "queued");
+  const claims = await Promise.all([claimGeneration("v1", db), claimGeneration("v1", db)]);
+  const winners = claims.filter((claim) => claim.ok);
+  const losers = claims.filter((claim) => !claim.ok);
+  assert.equal(winners.length, 1);
+  assert.equal(losers.length, 1);
+  assert.equal(losers[0] && "message" in losers[0] ? losers[0].message : "", "Video is already generating. Please wait.");
+  assert.equal(videoOf(database, "v1").status, "generating");
+});
+
+test("the background loop generates every shot and stops on the first failure", async () => {
+  const savedError = console.error;
+  console.error = () => {};
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "failed", "Clip generation failed for shot 2.");
+  insertShot(database, "v1", 1, "ready", "Prompt 1", "https://example.com/first.mp4");
+  insertShot(database, "v1", 2, "failed", "Prompt 2", null, "old failure");
+  insertShot(database, "v1", 3, "queued", "Prompt 3");
+  insertShot(database, "v1", 4, "queued", "Prompt 4");
+  const claim = await claimGeneration("v1", db);
+  assert.equal(claim.ok, true);
+  if (claim.ok) assert.equal(claim.previousStatus, "failed");
+
+  const calls: string[] = [];
+  try {
+    const failed = await runBackgroundShotLoop("v1", {
+      db,
+      retry: true,
+      generateClip: async (prompt) => {
+        calls.push(prompt);
+        if (prompt === "Prompt 3") throw new Error("Kling rejected the shot");
+        return `https://example.com/${prompt}.mp4`;
+      },
+    });
+    assert.deepEqual(calls, ["Prompt 2", "Prompt 3"]);
+    assert.equal(failed.status, "failed");
+    const shots = shotsOf(database, "v1");
+    assert.equal(shots[0]?.status, "ready");
+    assert.equal(shots[0]?.clip_url, "https://example.com/first.mp4");
+    assert.equal(shots[1]?.status, "ready");
+    assert.equal(shots[2]?.status, "failed");
+    assert.match(shots[2]?.error ?? "", /Kling rejected the shot/);
+    assert.equal(shots[3]?.status, "queued");
+    assert.equal(videoOf(database, "v1").status, "failed");
+    assert.match(videoOf(database, "v1").error ?? "", /Kling rejected the shot/);
+
+    const blocked = await claimGeneration("v1", db);
+    assert.equal(blocked.ok, true);
+    calls.length = 0;
+    const finished = await runBackgroundShotLoop("v1", {
+      db,
+      retry: true,
+      generateClip: async (prompt) => {
+        calls.push(prompt);
+        return "https://example.com/rest.mp4";
+      },
+    });
+    assert.deepEqual(calls, ["Prompt 3", "Prompt 4"]);
+    assert.equal(finished.status, "ready");
+    assert.equal(videoOf(database, "v1").status, "ready");
+    assert.equal(videoOf(database, "v1").error, null);
+    assert.equal(shotsOf(database, "v1")[0]?.clip_url, "https://example.com/first.mp4");
+  } finally {
+    console.error = savedError;
+  }
+});
+
+test("a thrown background loop marks the video failed and does not continue", async () => {
+  const savedError = console.error;
+  console.error = () => {};
+  const { database, db } = createDb();
+  insertVideo(database, "v1", "generating");
+  insertShot(database, "v1", 1, "queued", "Prompt 1");
+  insertShot(database, "v1", 2, "queued", "Prompt 2");
+  const calls: string[] = [];
+  const flaky = {
+    prepare(sql: string) {
+      const statement = db.prepare(sql);
+      return {
+        get: (...params: unknown[]) => statement.get(...params),
+        all: (...params: unknown[]) => statement.all(...params),
+        run: (...params: unknown[]) => {
+          if (sql.includes("UPDATE shots SET status = ?, clip_url")) return Promise.reject(new Error("disk full"));
+          return statement.run(...params);
+        },
+      };
+    },
+  };
+
+  try {
+    const result = await runBackgroundShotLoop("v1", {
+      db: flaky,
+      generateClip: async (prompt) => {
+        calls.push(prompt);
+        return "https://example.com/clip.mp4";
+      },
+    });
+    assert.deepEqual(calls, ["Prompt 1"]);
+    assert.equal(result.status, "failed");
+    assert.match(result.error ?? "", /disk full/);
+    assert.equal(videoOf(database, "v1").status, "failed");
+    assert.match(videoOf(database, "v1").error ?? "", /disk full/);
+    assert.equal(shotsOf(database, "v1")[0]?.status, "failed");
+    assert.equal(shotsOf(database, "v1")[1]?.status, "queued");
+  } finally {
+    console.error = savedError;
+  }
 });

@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --test lib/validators.test.ts lib/unlock.test.ts lib/password.test.ts lib/video/generator.test.ts lib/voice.test.ts lib/video-generator.test.ts lib/pipeline.test.ts lib/generation-step.test.ts"
   },
   "dependencies": {
+    "@vercel/functions": "^3.10.4",
     "next": "16.3.6",
     "next-auth": "^5.0.0-beta.32",
     "postgres": "^3.4.9",
