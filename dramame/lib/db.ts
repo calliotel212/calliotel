@@ -158,7 +158,9 @@ const SQLITE_SCHEMA = `
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       generation_lock TEXT,
-      generation_heartbeat INTEGER
+      generation_heartbeat INTEGER,
+      character_image_url TEXT,
+      location_image_url TEXT
     );
 
     CREATE TABLE IF NOT EXISTS shots (
@@ -287,7 +289,9 @@ const POSTGRES_SCHEMA = [
       created_at BIGINT NOT NULL,
       updated_at BIGINT NOT NULL,
       generation_lock TEXT,
-      generation_heartbeat BIGINT
+      generation_heartbeat BIGINT,
+      character_image_url TEXT,
+      location_image_url TEXT
     )`,
   `CREATE TABLE IF NOT EXISTS shots (
       id TEXT PRIMARY KEY,
@@ -312,6 +316,8 @@ const POSTGRES_SCHEMA = [
   `ALTER TABLE studio_requests ADD COLUMN IF NOT EXISTS read_at BIGINT`,
   `ALTER TABLE videos ADD COLUMN IF NOT EXISTS generation_lock TEXT`,
   `ALTER TABLE videos ADD COLUMN IF NOT EXISTS generation_heartbeat BIGINT`,
+  `ALTER TABLE videos ADD COLUMN IF NOT EXISTS character_image_url TEXT`,
+  `ALTER TABLE videos ADD COLUMN IF NOT EXISTS location_image_url TEXT`,
 ];
 
 class Mutex {
@@ -377,6 +383,12 @@ function createSqlite(): Db {
     }
     if (!sqliteHasColumn(database, "videos", "generation_heartbeat")) {
       database.exec("ALTER TABLE videos ADD COLUMN generation_heartbeat INTEGER");
+    }
+    if (!sqliteHasColumn(database, "videos", "character_image_url")) {
+      database.exec("ALTER TABLE videos ADD COLUMN character_image_url TEXT");
+    }
+    if (!sqliteHasColumn(database, "videos", "location_image_url")) {
+      database.exec("ALTER TABLE videos ADD COLUMN location_image_url TEXT");
     }
     schemaReady = true;
   };

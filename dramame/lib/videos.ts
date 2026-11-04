@@ -138,16 +138,45 @@ async function shotsFor(videoId: string): Promise<StoredShot[]> {
   });
 }
 
-export async function createQueuedVideo(input: { userId: string; planId: PlanId; script: string }): Promise<string> {
+export function storedImageUrl(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export async function createQueuedVideo(input: {
+  userId: string;
+  planId: PlanId;
+  script: string;
+  characterImageUrl?: string | null;
+  locationImageUrl?: string | null;
+}): Promise<string> {
   const id = randomUUID();
   const now = Date.now();
   await getDb()
     .prepare(
       `INSERT INTO videos (
-        id, user_id, series_id, plan_id, script_text, shot_list_json, status, output_url, error, created_at, updated_at
-      ) VALUES (?, ?, NULL, ?, ?, NULL, 'queued', NULL, NULL, ?, ?)`,
+        id, user_id, series_id, plan_id, script_text, shot_list_json, status, output_url, error, created_at, updated_at,
+        character_image_url, location_image_url
+      ) VALUES (?, ?, NULL, ?, ?, NULL, 'queued', NULL, NULL, ?, ?, ?, ?)`,
     )
-    .run(id, input.userId, input.planId, input.script.trim(), now, now);
+    .run(
+      id,
+      input.userId,
+      input.planId,
+      input.script.trim(),
+      now,
+      now,
+      storedImageUrl(input.characterImageUrl),
+      storedImageUrl(input.locationImageUrl),
+    );
   return id;
 }
 

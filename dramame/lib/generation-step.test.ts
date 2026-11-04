@@ -48,7 +48,9 @@ function createDb(): { database: DatabaseSync; db: MemoryDb } {
       shot_list_json TEXT,
       updated_at INTEGER,
       generation_lock TEXT,
-      generation_heartbeat INTEGER
+      generation_heartbeat INTEGER,
+      character_image_url TEXT,
+      location_image_url TEXT
     );
     CREATE TABLE shots (
       id TEXT PRIMARY KEY,
@@ -357,6 +359,37 @@ test("a video with no shots plans seven and generates the first", async () => {
   } finally {
     console.log = savedLog;
     globalThis.fetch = savedFetch;
+    if (savedImage === undefined) delete process.env.DRAMAME_START_IMAGE_URL;
+    else process.env.DRAMAME_START_IMAGE_URL = savedImage;
+  }
+});
+
+test("every shot uses the character image and not the location image", async () => {
+  const savedImage = process.env.DRAMAME_START_IMAGE_URL;
+  process.env.DRAMAME_START_IMAGE_URL = "https://example.com/env-still.png";
+  const { database, db } = createDb();
+  insertVideo(database, "face");
+  database
+    .prepare("UPDATE videos SET character_image_url = ?, location_image_url = ? WHERE id = ?")
+    .run("https://example.com/face.png", "https://example.com/map.png", "face");
+  insertShot(database, "face", 1, "queued", "Prompt 1");
+  insertShot(database, "face", 2, "queued", "Prompt 2");
+  const calls: string[] = [];
+  try {
+    const result = await runBackgroundShotLoop("face", {
+      db,
+      generateClip: async (prompt, imageUrl) => {
+        calls.push(`${prompt}|${imageUrl}`);
+        return `https://example.com/${calls.length}.mp4`;
+      },
+    });
+    assert.deepEqual(calls, [
+      "Prompt 1|https://example.com/face.png",
+      "Prompt 2|https://example.com/face.png",
+    ]);
+    assert.equal(result.status, "ready");
+    assert.equal(calls.some((call) => call.includes("map.png")), false);
+  } finally {
     if (savedImage === undefined) delete process.env.DRAMAME_START_IMAGE_URL;
     else process.env.DRAMAME_START_IMAGE_URL = savedImage;
   }

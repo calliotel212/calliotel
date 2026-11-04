@@ -22,6 +22,7 @@ type VideoRow = {
   status?: string | null;
   output_url?: string | null;
   error?: string | null;
+  character_image_url?: string | null;
 };
 
 type ShotRow = {
@@ -182,6 +183,14 @@ function clipFailureMessage(index: number): string {
   return process.env.FAL_API_KEY?.trim() ? `Clip generation failed for shot ${index}.` : "FAL_API_KEY is not set.";
 }
 
+// The uploaded character face is the Kling start image for every shot.
+// location_image_url stays on the row and is not sent in this pass.
+function clipStartImage(video: VideoRow): string {
+  const character = typeof video.character_image_url === "string" ? video.character_image_url.trim() : "";
+  if (/^https?:\/\//i.test(character)) return character;
+  return process.env.DRAMAME_START_IMAGE_URL?.trim() ?? "";
+}
+
 function publishShot(shot: SavedShot): GenerationShotState {
   return {
     index: shot.index,
@@ -228,7 +237,7 @@ async function openDb(): Promise<StatementDb> {
 
 async function loadVideo(db: StatementDb, videoId: string): Promise<VideoRow | null> {
   const row = (await db
-    .prepare("SELECT id, script_text, status, output_url, error FROM videos WHERE id = ?")
+    .prepare("SELECT id, script_text, status, output_url, error, character_image_url FROM videos WHERE id = ?")
     .get(videoId)) as VideoRow | undefined;
   return row?.id ? row : null;
 }
@@ -405,7 +414,7 @@ export async function advanceGenerationStep(videoId: string, options?: StepOptio
   }
 
   const generateClip = options?.generateClip ?? (await import("@/lib/video-generator")).generateClip;
-  const imageUrl = process.env.DRAMAME_START_IMAGE_URL?.trim() ?? "";
+  const imageUrl = clipStartImage(video);
 
   try {
     const clipUrl = await generateClip(next.prompt, imageUrl, next.duration_seconds);
