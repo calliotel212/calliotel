@@ -1,10 +1,12 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api-client";
 import { saveAdvertiserAccessToken } from "@/lib/advertiser-auth";
+import { AuditModal } from "./audit-modal";
+import type { WebsiteAuditResult } from "./audit-types";
 
 type Tab = "signup" | "login";
 
@@ -45,6 +47,37 @@ export default function AdvertisePage() {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
+  const [auditResult, setAuditResult] = useState<WebsiteAuditResult | null>(null);
+  const signupFormRef = useRef<HTMLFormElement>(null);
+
+  const canAudit = tab === "signup" && websiteUrl.trim().length >= 4;
+
+  async function onGenerateAudit() {
+    if (!canAudit) return;
+    setAuditOpen(true);
+    setAuditLoading(true);
+    setAuditError(null);
+    setAuditResult(null);
+    try {
+      const data = await apiPost<WebsiteAuditResult>("/api/v1/advertisers/audit", {
+        website_url: websiteUrl.trim(),
+      });
+      setAuditResult(data);
+    } catch (err) {
+      setAuditError(err instanceof Error ? err.message : "Audit failed");
+    } finally {
+      setAuditLoading(false);
+    }
+  }
+
+  function onAuditCta() {
+    setAuditOpen(false);
+    setTab("signup");
+    signupFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -103,7 +136,11 @@ export default function AdvertisePage() {
           ))}
         </div>
 
-        <form className="mt-6 space-y-4 rounded-xl border border-slate-700 bg-ads-slate p-6" onSubmit={onSubmit}>
+        <form
+          ref={signupFormRef}
+          className="mt-6 space-y-4 rounded-xl border border-slate-700 bg-ads-slate p-6"
+          onSubmit={onSubmit}
+        >
           {tab === "signup" ? (
             <>
               <div>
@@ -147,6 +184,16 @@ export default function AdvertisePage() {
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://example.com"
                 />
+                {canAudit ? (
+                  <button
+                    type="button"
+                    onClick={onGenerateAudit}
+                    disabled={auditLoading}
+                    className="mt-3 w-full rounded-lg border border-ads-teal/50 bg-ads-navy/80 py-2 text-sm font-medium text-ads-teal hover:border-ads-teal hover:bg-ads-teal/10 disabled:opacity-60"
+                  >
+                    Generate Free AI Audit
+                  </button>
+                ) : null}
               </div>
             </>
           ) : null}
@@ -193,6 +240,15 @@ export default function AdvertisePage() {
             Tenant dashboard
           </Link>
         </p>
+
+        <AuditModal
+          open={auditOpen}
+          loading={auditLoading}
+          result={auditResult}
+          error={auditError}
+          onClose={() => setAuditOpen(false)}
+          onCta={onAuditCta}
+        />
       </div>
     </div>
   );

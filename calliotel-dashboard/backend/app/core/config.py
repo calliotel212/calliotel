@@ -21,5 +21,10 @@ class Settings(BaseSettings):
     admin_emails: str = ""
     redis_url: str = "redis://redis:6379/0"
 
+    # Optional — richer website audit on /advertisers/audit (mock report if unset)
+    openai_api_key: str = ""
+    groq_api_key: str = ""
+    deepseek_api_key: str = ""
+
 
 settings = Settings()

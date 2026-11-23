@@ -95,6 +95,16 @@ Separate auth from the tenant dashboard. JWT type `advertiser`, stored in sessio
 | http://localhost:3000/advertise | Sign up / log in for advertisers |
 | http://localhost:3000/advertiser/dashboard | Wallet + campaigns (requires advertiser token) |
 
+### Free website audit (public funnel)
+
+`POST /api/v1/advertisers/audit` with `{"website_url":"https://yoursite.com"}` — **no JWT**. Used by the “Generate Free AI Audit” button on `/advertise`. Light per-IP rate limit (in-memory, ~15/min). Scrapes title/meta/H1/body (10s timeout), returns `site_score`, SSL status, missing keywords, competitor insights, and ad recommendations. Without an LLM key the API returns a hostname-aware mock report.
+
+Optional env vars on the API container (any one enables LLM enrichment):
+
+- `OPENAI_API_KEY`
+- `GROQ_API_KEY`
+- `DEEPSEEK_API_KEY`
+
 Test flow:
 
 ```bash
