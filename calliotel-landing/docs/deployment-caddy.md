@@ -11,9 +11,25 @@ Target hostnames: **calliotel.ai** and **www.calliotel.ai**
 
 ## Example Caddyfile (host)
 
+AdsFind advertiser UI lives on the **dashboard** Next.js app (port **3000**). Route those paths on the apex domain; everything else goes to the marketing landing (**3001**).
+
 ```caddy
 calliotel.ai, www.calliotel.ai {
-    reverse_proxy localhost:3001
+    @www host www.calliotel.ai
+    redir @www https://calliotel.ai{uri} permanent
+
+    handle_path /api/* {
+        reverse_proxy localhost:8000
+    }
+    handle /advertise* {
+        reverse_proxy localhost:3000
+    }
+    handle /advertiser* {
+        reverse_proxy localhost:3000
+    }
+    handle {
+        reverse_proxy localhost:3001
+    }
 }
 
 app.calliotel.ai {
@@ -21,6 +37,8 @@ app.calliotel.ai {
     reverse_proxy localhost:3000
 }
 ```
+
+Set `NEXT_PUBLIC_API_URL=https://calliotel.ai` (or keep `https://app.calliotel.ai`) in `calliotel-dashboard/.env` so advertiser forms hit the API from the browser.
 
 Reload Caddy after editing: `sudo systemctl reload caddy` (or `caddy reload --config /etc/caddy/Caddyfile`).
 

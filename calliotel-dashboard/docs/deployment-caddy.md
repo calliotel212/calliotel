@@ -13,6 +13,8 @@ Target hostname: **app.calliotel.ai**
 
 ## Example Caddyfile (host)
 
+See also `calliotel-landing/docs/deployment-caddy.md` for apex routing (`/advertise`, `/advertiser/*` → port 3000).
+
 ```caddy
 app.calliotel.ai {
     reverse_proxy /api/* localhost:8000
