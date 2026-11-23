@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.audit_rate_limit import check_audit_rate_limit
 from app.core.deps import get_current_advertiser_user
 from app.db.session import get_db
 from app.models.ads import AdvertiserUser
+from app.schemas.audit import WebsiteAuditRequest, WebsiteAuditResponse
 from app.schemas.advertiser import (
     AdvertiserLoginRequest,
     AdvertiserMeResponse,
@@ -19,8 +21,24 @@ from app.schemas.advertiser import (
 )
 from app.services import advertiser_auth_service, advertiser_campaign_service, advertiser_wallet_service
 from app.services.advertiser_shield_service import blocked_fraud_clicks_for_advertiser
+from app.services import website_audit_service
 
 router = APIRouter(prefix="/advertisers", tags=["advertisers"])
+
+
+@router.post("/audit", response_model=WebsiteAuditResponse)
+def audit_website(body: WebsiteAuditRequest, request: Request) -> WebsiteAuditResponse:
+    """Public funnel endpoint (no JWT). Light per-IP rate limit in memory."""
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_audit_rate_limit(client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many audit requests. Try again in a minute.",
+        )
+    try:
+        return website_audit_service.run_website_audit(body.website_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/register", response_model=AdvertiserTokenResponse, status_code=status.HTTP_201_CREATED)
