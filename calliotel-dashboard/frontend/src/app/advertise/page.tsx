@@ -8,6 +8,33 @@ import { saveAdvertiserAccessToken } from "@/lib/advertiser-auth";
 
 type Tab = "signup" | "login";
 
+function VoiceSearchPreview() {
+  return (
+    <div className="mt-8 rounded-xl border border-slate-700 bg-ads-slate p-5">
+      <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+        Live in AI search &amp; voice
+      </p>
+      <div className="mr-auto mt-3 max-w-[85%] rounded-2xl rounded-bl-md bg-ads-navy px-4 py-3 text-sm text-slate-200 shadow-inner">
+        Where can I rent a car near the airport in Dubai?
+      </div>
+      <div className="mt-3 flex justify-end">
+        <div className="max-w-[90%] rounded-2xl rounded-br-md border border-ads-teal/30 bg-gradient-to-br from-slate-800 to-ads-slate px-4 py-3 shadow-lg">
+          <span className="mb-1 inline-block rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">
+            Sponsored
+          </span>
+          <p className="text-sm font-semibold text-white">Gulf Drive Rentals</p>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">
+            Airport pickup in 15 minutes. Book online and skip the counter — rates from $29/day.
+          </p>
+        </div>
+      </div>
+      <p className="mt-3 text-center text-[11px] text-slate-500">
+        Sample placement when users ask Calliotel AI assistants
+      </p>
+    </div>
+  );
+}
+
 export default function AdvertisePage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("signup");
@@ -50,6 +77,8 @@ export default function AdvertisePage() {
         <p className="mt-4 text-center text-sm text-slate-400">
           Deposit $100 to start getting AI-referred customers.
         </p>
+
+        <VoiceSearchPreview />
 
         <div className="mt-10 flex rounded-lg bg-ads-slate p-1">
           {(["signup", "login"] as const).map((t) => (

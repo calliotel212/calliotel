@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import ARRAY, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -40,6 +40,10 @@ class Campaign(Base):
     destination_url: Mapped[str] = mapped_column(String(2048), nullable=False)
     intent_description: Mapped[str] = mapped_column(Text, nullable=False)
     max_cpc: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    daily_budget: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    # Empty arrays mean no filter — campaign is eligible for all countries/languages.
+    target_countries: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
+    target_languages: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
 
     advertiser: Mapped["Advertiser"] = relationship(back_populates="campaigns")

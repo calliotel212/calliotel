@@ -25,10 +25,20 @@ def verify_internal_ads_key(
 @router.get("/match", response_model=AdMatchResponse)
 def match_ad(
     q: str = Query(..., min_length=1, max_length=2000),
+    country: str | None = Query(
+        default=None,
+        max_length=8,
+        description="ISO country code; only campaigns targeting this country (or unrestricted) match.",
+    ),
+    language: str | None = Query(
+        default=None,
+        max_length=8,
+        description="Language code (e.g. en, ar); only campaigns targeting this language (or unrestricted) match.",
+    ),
     db: Session = Depends(get_db),
     _: None = Depends(verify_internal_ads_key),
 ) -> AdMatchResponse:
-    result = find_sponsored_ad(db, q)
+    result = find_sponsored_ad(db, q, country=country, language=language)
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No sponsored ad match")
     return AdMatchResponse(**result)
