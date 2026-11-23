@@ -46,7 +46,7 @@ def create_campaign(
     daily_budget: Decimal = Decimal("0"),
     target_countries: list[str] | None = None,
     target_languages: list[str] | None = None,
-    status: str = "active",
+    status: str = "pending_approval",
 ) -> Campaign:
     campaign = Campaign(
         advertiser_id=advertiser_id,
