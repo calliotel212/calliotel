@@ -4,19 +4,16 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        navy: {
-          950: "#0a0f1a",
-          900: "#0f172a",
-          800: "#1e293b",
-        },
-        accent: {
-          400: "#2dd4bf",
-          500: "#14b8a6",
-          600: "#0d9488",
+        adsfind: {
+          bg: "#0A0F1C",
+          primary: "#00E5FF",
         },
       },
       fontFamily: {
-        sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        "glow-primary": "0 0 24px rgba(0, 229, 255, 0.35), 0 0 48px rgba(0, 229, 255, 0.12)",
       },
     },
   },
