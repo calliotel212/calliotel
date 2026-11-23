@@ -15,6 +15,9 @@ from app.services.publisher_service import publisher_earnings_for_event
 # Forward-compatible with admin campaign approval (PR #6): only active campaigns serve.
 SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
 
+# Only admin-approved campaigns may serve in voice/AdsFind matching.
+SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
+
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _MIN_SCORE = 2
 

@@ -120,7 +120,6 @@ def create_campaign(
         daily_budget=body.daily_budget,
         target_countries=body.target_countries,
         target_languages=body.target_languages,
-        status=body.status,
     )
     return _campaign_response(db, campaign)
 
@@ -151,6 +150,11 @@ def patch_campaign(
     )
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    if body.status is not None and campaign.status in ("pending_approval", "rejected"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campaign must be approved before changing live status",
+        )
     updated = advertiser_campaign_service.update_campaign(
         db,
         campaign=campaign,

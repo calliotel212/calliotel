@@ -64,6 +64,8 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
+Set `ADMIN_*` environment variables in production for the owner console at `/admin` (not linked from marketing pages).
+
 ## Phase 4 — phone picker + activate
 
 After login, open **Numbers** (`/dashboard/numbers`):

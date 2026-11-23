@@ -134,8 +134,17 @@ export default function AdvertiserDashboardPage() {
     }
   }
 
+  function statusLabel(status: string): string {
+    if (status === "pending_approval") return "Pending review";
+    if (status === "rejected") return "Rejected";
+    if (status === "active") return "Active";
+    if (status === "paused") return "Paused";
+    return status;
+  }
+
   async function onToggleStatus(c: Campaign) {
     if (!token) return;
+    if (c.status === "pending_approval" || c.status === "rejected") return;
     const next = c.status === "active" ? "paused" : "active";
     try {
       await apiPatch(`/api/v1/advertisers/campaigns/${c.id}`, { status: next }, token);
@@ -186,7 +195,6 @@ export default function AdvertiserDashboardPage() {
           daily_budget: Number(form.daily_budget),
           target_countries: form.target_countries,
           target_languages: form.target_languages,
-          status: "active",
         },
         token,
       );
@@ -454,19 +462,31 @@ export default function AdvertiserDashboardPage() {
                     <tr key={c.id} className="border-t border-slate-800">
                       <td className="px-4 py-3 font-medium text-white">{c.brand_name}</td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={c.status === "active"}
-                          onClick={() => onToggleStatus(c)}
-                          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                            c.status === "active"
-                              ? "bg-teal-900/50 text-ads-teal hover:bg-teal-900/70"
-                              : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                          }`}
-                        >
-                          {c.status === "active" ? "Active" : "Paused"}
-                        </button>
+                        {c.status === "pending_approval" || c.status === "rejected" ? (
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              c.status === "pending_approval"
+                                ? "bg-amber-900/40 text-amber-200"
+                                : "bg-red-900/40 text-red-200"
+                            }`}
+                          >
+                            {statusLabel(c.status)}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={c.status === "active"}
+                            onClick={() => onToggleStatus(c)}
+                            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                              c.status === "active"
+                                ? "bg-teal-900/50 text-ads-teal hover:bg-teal-900/70"
+                                : "bg-slate-800 text-slate-400 hover:bg-slate-700"
+                            }`}
+                          >
+                            {statusLabel(c.status)}
+                          </button>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-slate-300">
                         ${Number(c.daily_budget || 0).toFixed(2)}/day
