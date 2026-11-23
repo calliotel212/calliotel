@@ -22,3 +22,17 @@ def deposit_funds(db: Session, *, advertiser_id: str, amount_usd: Decimal) -> tu
     db.commit()
     db.refresh(advertiser)
     return Decimal(str(advertiser.wallet_balance)), amount_usd
+
+
+def debit_funds(db: Session, *, advertiser_id: str, amount_usd: Decimal) -> Decimal:
+    if amount_usd <= 0:
+        raise ValueError("Debit amount must be positive")
+    advertiser = db.query(Advertiser).filter(Advertiser.id == advertiser_id).first()
+    if advertiser is None:
+        raise ValueError("Advertiser not found")
+    current = Decimal(str(advertiser.wallet_balance))
+    if current < amount_usd:
+        raise ValueError("Insufficient wallet balance")
+    advertiser.wallet_balance = current - amount_usd
+    db.flush()
+    return Decimal(str(advertiser.wallet_balance))

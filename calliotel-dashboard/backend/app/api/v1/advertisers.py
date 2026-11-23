@@ -8,6 +8,7 @@ from app.schemas.advertiser import (
     AdvertiserLoginRequest,
     AdvertiserMeResponse,
     AdvertiserRegisterRequest,
+    AdvertiserShieldStatsResponse,
     AdvertiserTokenResponse,
     CampaignCreateRequest,
     CampaignResponse,
@@ -17,6 +18,7 @@ from app.schemas.advertiser import (
     WalletResponse,
 )
 from app.services import advertiser_auth_service, advertiser_campaign_service, advertiser_wallet_service
+from app.services.advertiser_shield_service import blocked_fraud_clicks_for_advertiser
 
 router = APIRouter(prefix="/advertisers", tags=["advertisers"])
 
@@ -61,6 +63,15 @@ def me(current: AdvertiserUser = Depends(get_current_advertiser_user)) -> Advert
         kyc_status=current.kyc_status,
         wallet_balance=adv.wallet_balance,
     )
+
+
+@router.get("/shield/stats", response_model=AdvertiserShieldStatsResponse)
+def shield_stats(
+    current: AdvertiserUser = Depends(get_current_advertiser_user),
+    db: Session = Depends(get_db),
+) -> AdvertiserShieldStatsResponse:
+    blocked = blocked_fraud_clicks_for_advertiser(db, advertiser_id=current.advertiser_id)
+    return AdvertiserShieldStatsResponse(blocked_fraud_clicks=blocked)
 
 
 @router.get("/wallet", response_model=WalletResponse)

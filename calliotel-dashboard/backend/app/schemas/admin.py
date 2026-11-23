@@ -16,10 +16,15 @@ class AdminTokenResponse(BaseModel):
 
 
 class AdminMetricsResponse(BaseModel):
-    """Revenue is estimated until per-click wallet debits ship."""
+    """Revenue from billed ``valid_click`` events (wallet debits)."""
 
     total_revenue_usd: Decimal
-    total_clicks: int
+    total_served: int
+    valid_clicks: int
+    blocked_fraud_clicks: int
+    total_clicks: int = Field(
+        description="Deprecated alias for valid_clicks (kept for older admin UI builds)",
+    )
     revenue_formula: str
 
 

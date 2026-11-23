@@ -7,6 +7,7 @@ Customer-facing app for **app.calliotel.ai**: auth + business dashboard.
 - **Frontend:** Next.js 15, TypeScript, Tailwind
 - **Backend:** FastAPI, SQLAlchemy, Alembic, JWT
 - **Database:** PostgreSQL 16
+- **Cache:** Redis 7 (AdsFind click fraud shield)
 - **Email:** Resend (password reset)
 
 ## Quick start (Docker)
@@ -64,7 +65,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
-Set `ADMIN_SECRET`, optional `ADMIN_EMAILS`, and `ADMIN_JWT_EXPIRE_MINUTES` for the owner console at `/admin` or `/admin/dashboard` (not linked from marketing pages). After deploy, run Alembic through revision `011_user_advertiser` so advertiser KYC columns, campaign `review_ends_at`, and tenant→advertiser links exist.
+Set `ADMIN_SECRET`, optional `ADMIN_EMAILS`, and `ADMIN_JWT_EXPIRE_MINUTES` for the owner console at `/admin` or `/admin/dashboard` (not linked from marketing pages). After deploy, run Alembic through revision `012_click_fraud_events` (includes `011_user_advertiser` for KYC / tenant→advertiser links). Set `REDIS_URL` for the `redis` service in `docker-compose.yml` (default `redis://redis:6379/0`).
 
 ## Phase 4 — phone picker + activate
 
@@ -170,7 +171,15 @@ curl -s http://localhost:8000/api/v1/dashboard/summary -H "Authorization: Bearer
 | http://localhost:3000/dashboard/advertising | Ads Manager (wallet, campaigns, 3-step wizard) |
 | http://localhost:3000/admin/dashboard | Same as `/admin` — ops console |
 
+## AdsFind click fraud shield
+
+Tracked clicks use signed redirects at `GET /r/{token}` (JWT from the match API’s `click_url`). Redis stores a 24h duplicate key per `sha256(ip|user_agent|campaign_id)`. When Redis is up, repeat clicks are recorded as `invalid_fraud` with **no wallet debit**; first clicks debit `max_cpc` and record `valid_click`. If Redis is down, clicks are allowed (fail-open) and a warning is logged.
+
+```bash
+docker compose up -d --build postgres redis api
+```
+
 ## Scope
 
-**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate, AdsFind advertiser accounts, **tenant Advertising tab**  
+**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate, AdsFind advertiser accounts, **tenant Advertising tab**, Redis click fraud shield  
 **TODO:** Call logs, Stripe billing, real wallet payments

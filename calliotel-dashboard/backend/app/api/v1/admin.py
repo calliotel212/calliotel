@@ -55,10 +55,13 @@ def admin_metrics(
     _: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ) -> AdminMetricsResponse:
-    revenue, clicks, formula = admin_service.get_metrics(db)
+    revenue, served, valid_clicks, blocked, formula = admin_service.get_metrics(db)
     return AdminMetricsResponse(
         total_revenue_usd=revenue,
-        total_clicks=clicks,
+        total_served=served,
+        valid_clicks=valid_clicks,
+        blocked_fraud_clicks=blocked,
+        total_clicks=valid_clicks,
         revenue_formula=formula,
     )
 

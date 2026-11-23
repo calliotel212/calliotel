@@ -20,17 +20,20 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
   const [error, setError] = useState<string | null>(null);
   const [loadingDeposit, setLoadingDeposit] = useState(false);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [blockedFraud, setBlockedFraud] = useState(0);
 
   const dark = theme === "dark";
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    const [wallet, list] = await Promise.all([
+    const [wallet, list, shield] = await Promise.all([
       apiGet<{ balance_usd: string }>(`${apiBase}/wallet`, token),
       apiGet<Campaign[]>(`${apiBase}/campaigns`, token),
+      apiGet<{ blocked_fraud_clicks: number }>(`${apiBase}/shield/stats`, token),
     ]);
     setBalance(wallet.balance_usd);
     setCampaigns(list);
+    setBlockedFraud(shield.blocked_fraud_clicks);
   }, [apiBase, token]);
 
   useEffect(() => {
@@ -116,6 +119,8 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
 
       {hasReviewQueue ? <ReviewBanner dark={dark} /> : null}
 
+      <ShieldBadge blocked={blockedFraud} dark={dark} />
+
       <section
         className={`rounded-xl border p-6 ${
           dark ? "border-slate-700 bg-ads-slate" : "border-slate-200 bg-white shadow-sm"
@@ -169,6 +174,27 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
         />
       </section>
     </div>
+  );
+}
+
+function ShieldBadge({ blocked, dark }: { blocked: number; dark: boolean }) {
+  return (
+    <section
+      className={`rounded-xl border px-5 py-4 ${
+        dark
+          ? "border-teal-700/40 bg-gradient-to-r from-teal-950/50 to-ads-slate"
+          : "border-teal-200 bg-teal-50"
+      }`}
+    >
+      <p className={`text-sm font-semibold ${dark ? "text-teal-100" : "text-teal-900"}`}>
+        Protected by AdsFind Shield
+      </p>
+      <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-teal-800"}`}>
+        {blocked === 0
+          ? "Duplicate click protection is active — no bot clicks blocked yet."
+          : `${blocked.toLocaleString()} bot click${blocked === 1 ? "" : "s"} blocked.`}
+      </p>
+    </section>
   );
 }
 

@@ -7,6 +7,7 @@ from decimal import Decimal
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, joinedload
 
+from app.models.ad_event_types import INVALID_FRAUD, SERVED, VALID_CLICK
 from app.models.ads import AdEvent, Advertiser, AdvertiserUser, Campaign
 from app.services import publisher_service
 from app.services.campaign_review_service import (
@@ -17,27 +18,32 @@ from app.services.campaign_review_service import (
 
 # Documented in AdminMetricsResponse.revenue_formula
 REVENUE_FORMULA = (
-    "SUM(campaigns.max_cpc) for each ad_events row where event_type = 'served' "
-    "(estimated click charges; wallet debits on serve are not implemented yet)."
+    "SUM(campaigns.max_cpc) for each ad_events row where event_type = 'valid_click' "
+    "(wallet debits on first valid click; duplicates blocked as invalid_fraud)."
 )
 
 _PENDING_STATUSES = (PENDING_REVIEW_STATUS, LEGACY_PENDING_STATUS)
 
 
-def get_metrics(db: Session) -> tuple[Decimal, int, str]:
-    clicks_q = db.scalar(
-        select(func.count()).select_from(AdEvent).where(AdEvent.event_type == "served")
+def get_metrics(db: Session) -> tuple[Decimal, int, int, int, str]:
+    total_served = int(
+        db.scalar(select(func.count()).select_from(AdEvent).where(AdEvent.event_type == SERVED)) or 0
     )
-    total_clicks = int(clicks_q or 0)
+    valid_clicks = int(
+        db.scalar(select(func.count()).select_from(AdEvent).where(AdEvent.event_type == VALID_CLICK)) or 0
+    )
+    blocked_fraud_clicks = int(
+        db.scalar(select(func.count()).select_from(AdEvent).where(AdEvent.event_type == INVALID_FRAUD)) or 0
+    )
 
     revenue_row = db.execute(
         select(func.coalesce(func.sum(Campaign.max_cpc), 0))
         .select_from(AdEvent)
         .join(Campaign, Campaign.id == AdEvent.campaign_id)
-        .where(AdEvent.event_type == "served")
+        .where(AdEvent.event_type == VALID_CLICK)
     ).scalar_one()
     total_revenue = Decimal(str(revenue_row or 0))
-    return total_revenue, total_clicks, REVENUE_FORMULA
+    return total_revenue, total_served, valid_clicks, blocked_fraud_clicks, REVENUE_FORMULA
 
 
 def list_advertisers(db: Session, *, kyc_status: str | None = None) -> list[dict]:
@@ -88,7 +94,7 @@ def list_campaigns_for_review(db: Session, *, status: str | None = None) -> list
     click_rows = (
         db.execute(
             select(AdEvent.campaign_id, func.count())
-            .where(AdEvent.campaign_id.in_(ids), AdEvent.event_type == "served")
+            .where(AdEvent.campaign_id.in_(ids), AdEvent.event_type == VALID_CLICK)
             .group_by(AdEvent.campaign_id)
         ).all()
         if ids
