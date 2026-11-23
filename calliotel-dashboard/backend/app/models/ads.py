@@ -59,3 +59,45 @@ class AdEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     campaign: Mapped["Campaign"] = relationship(back_populates="events")
+
+
+class Publisher(Base):
+    __tablename__ = "publishers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    pending_balance: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    paid_balance: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    revenue_share_percentage: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=70.0)
+    api_key_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    api_key_last4: Mapped[str] = mapped_column(String(4), nullable=False, default="")
+
+    users: Mapped[list["PublisherUser"]] = relationship(back_populates="publisher")
+    events: Mapped[list["PublisherEvent"]] = relationship(back_populates="publisher")
+
+
+class PublisherUser(Base):
+    __tablename__ = "publisher_users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    publisher_id: Mapped[str] = mapped_column(String(36), ForeignKey("publishers.id"), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    publisher: Mapped["Publisher"] = relationship(back_populates="users")
+
+
+class PublisherEvent(Base):
+    __tablename__ = "publisher_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    publisher_id: Mapped[str] = mapped_column(String(36), ForeignKey("publishers.id"), nullable=False)
+    campaign_id: Mapped[str] = mapped_column(String(36), ForeignKey("campaigns.id"), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Mock earnings until wallet/settlement ships: max_cpc * revenue_share_percentage / 100.
+    revenue_amount: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    publisher: Mapped["Publisher"] = relationship(back_populates="events")
+    campaign: Mapped["Campaign"] = relationship()

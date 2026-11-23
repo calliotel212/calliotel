@@ -28,7 +28,10 @@ def fetch_sponsored_ad(settings: Settings, user_query: str) -> SponsoredAd | Non
 
     url = f"{base}/api/v1/internal/ads/match"
     headers: dict[str, str] = {}
-    if settings.internal_ads_api_key:
+    pub_key = (settings.publisher_api_key or "").strip()
+    if pub_key:
+        headers["X-Publisher-Api-Key"] = pub_key
+    elif settings.internal_ads_api_key:
         headers["X-Internal-Ads-Api-Key"] = settings.internal_ads_api_key
 
     try:

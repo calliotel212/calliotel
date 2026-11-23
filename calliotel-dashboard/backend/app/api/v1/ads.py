@@ -3,23 +3,38 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.models.ads import Publisher
 from app.schemas.ads import AdMatchResponse
 from app.services.ad_matcher import find_sponsored_ad
+from app.services import publisher_service
 
 router = APIRouter(prefix="/internal/ads", tags=["ads-internal"])
 
 
-def verify_internal_ads_key(
+def verify_legacy_internal_ads_key(
     x_internal_ads_api_key: str | None = Header(default=None, alias="X-Internal-Ads-Api-Key"),
-) -> None:
-    expected = settings.internal_ads_api_key.strip()
-    if not expected:
-        return
-    if not x_internal_ads_api_key or x_internal_ads_api_key != expected:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid internal ads API key",
-        )
+    x_publisher_api_key: str | None = Header(default=None, alias="X-Publisher-Api-Key"),
+    db: Session = Depends(get_db),
+) -> Publisher | None:
+    """Resolve publisher from ``X-Publisher-Api-Key``; optional legacy header fallback."""
+    raw_pub = (x_publisher_api_key or "").strip()
+    if raw_pub:
+        publisher = publisher_service.get_publisher_by_api_key(db, raw_pub)
+        if publisher is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid publisher API key",
+            )
+        return publisher
+
+    legacy = settings.internal_ads_api_key.strip()
+    if legacy and x_internal_ads_api_key and x_internal_ads_api_key == legacy:
+        return None
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="X-Publisher-Api-Key required",
+    )
 
 
 @router.get("/match", response_model=AdMatchResponse)
@@ -36,9 +51,11 @@ def match_ad(
         description="Language code (e.g. en, ar); only campaigns targeting this language (or unrestricted) match.",
     ),
     db: Session = Depends(get_db),
-    _: None = Depends(verify_internal_ads_key),
+    publisher: Publisher | None = Depends(verify_legacy_internal_ads_key),
 ) -> AdMatchResponse:
-    result = find_sponsored_ad(db, q, country=country, language=language)
+    result = find_sponsored_ad(
+        db, q, country=country, language=language, publisher=publisher
+    )
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No sponsored ad match")
     return AdMatchResponse(**result)
