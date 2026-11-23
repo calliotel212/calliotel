@@ -82,6 +82,9 @@ export default function LoginForm() {
       <p className="mt-2 text-center text-sm text-slate-600">
         New here? <AuthLink href="/signup">Create an account</AuthLink>
       </p>
+      <p className="mt-4 text-center text-xs text-slate-500">
+        <AuthLink href="/advertise">Advertise with Calliotel</AuthLink>
+      </p>
     </AuthShell>
   );
 }

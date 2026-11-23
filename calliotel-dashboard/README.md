@@ -83,7 +83,37 @@ curl -s -X POST http://localhost:8000/api/v1/dashboard/numbers/activate \
   -H "Authorization: Bearer $TOKEN" | jq
 ```
 
+## Advertiser dashboard (AdsFind)
+
+Separate auth from the tenant dashboard. JWT type `advertiser`, stored in sessionStorage as `advertiser_access_token`.
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:3000/advertise | Sign up / log in for advertisers |
+| http://localhost:3000/advertiser/dashboard | Wallet + campaigns (requires advertiser token) |
+
+Test flow:
+
+```bash
+ADV_TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/advertisers/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ads@example.com","password":"testpass123","business_name":"Demo Ads Co"}' \
+  | jq -r .access_token)
+
+curl -s http://localhost:8000/api/v1/advertisers/me -H "Authorization: Bearer $ADV_TOKEN" | jq
+
+curl -s -X POST http://localhost:8000/api/v1/advertisers/wallet/deposit \
+  -H "Authorization: Bearer $ADV_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"amount_usd":100}' | jq
+
+curl -s -X POST http://localhost:8000/api/v1/advertisers/campaigns \
+  -H "Authorization: Bearer $ADV_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"brand_name":"Demo","ad_copy":"We fix leaks fast.","destination_url":"https://example.com","intent_description":"emergency plumber","max_cpc":2.5}' | jq
+```
+
+Tenant routes under `/dashboard` are unchanged.
+
 ## Scope
 
-**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate  
-**TODO:** Call logs, Stripe billing
+**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate, AdsFind advertiser accounts  
+**TODO:** Call logs, Stripe billing, real wallet payments

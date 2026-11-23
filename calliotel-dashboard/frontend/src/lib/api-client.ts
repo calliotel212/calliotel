@@ -40,6 +40,19 @@ export async function apiGet<T>(path: string, token: string): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiPatch<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new ApiError(await parseError(res), res.status);
+  return res.json() as Promise<T>;
+}
+
 export async function apiPut<T>(path: string, body: unknown, token: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: "PUT",

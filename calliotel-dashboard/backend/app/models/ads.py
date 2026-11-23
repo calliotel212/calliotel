@@ -15,6 +15,19 @@ class Advertiser(Base):
     wallet_balance: Mapped[float] = mapped_column(Numeric(12, 4), nullable=False, default=0)
 
     campaigns: Mapped[list["Campaign"]] = relationship(back_populates="advertiser")
+    users: Mapped[list["AdvertiserUser"]] = relationship(back_populates="advertiser")
+
+
+class AdvertiserUser(Base):
+    __tablename__ = "advertiser_users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    advertiser_id: Mapped[str] = mapped_column(String(36), ForeignKey("advertisers.id"), nullable=False)
+    email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    advertiser: Mapped["Advertiser"] = relationship(back_populates="users")
 
 
 class Campaign(Base):
