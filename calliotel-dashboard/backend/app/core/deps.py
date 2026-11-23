@@ -10,6 +10,7 @@ from app.core.security import (
 from app.db.session import get_db
 from app.models.ads import AdvertiserUser, PublisherUser
 from app.models.user import User
+from app.services import tenant_advertiser_service
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -33,6 +34,14 @@ def get_current_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+def get_tenant_linked_advertiser_user(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdvertiserUser:
+    """Tenant JWT → linked AdsFind advertiser (auto-provision on first use)."""
+    return tenant_advertiser_service.get_or_link_advertiser_user(db, user=current_user)
 
 
 def get_current_advertiser_user(

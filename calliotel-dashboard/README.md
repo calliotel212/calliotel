@@ -64,7 +64,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
-Set `ADMIN_SECRET`, optional `ADMIN_EMAILS`, and `ADMIN_JWT_EXPIRE_MINUTES` for the owner console at `/admin` (not linked from marketing pages). After deploy, run Alembic through revision `010_kyc_review` so advertiser KYC columns and campaign `review_ends_at` exist.
+Set `ADMIN_SECRET`, optional `ADMIN_EMAILS`, and `ADMIN_JWT_EXPIRE_MINUTES` for the owner console at `/admin` or `/admin/dashboard` (not linked from marketing pages). After deploy, run Alembic through revision `011_user_advertiser` so advertiser KYC columns, campaign `review_ends_at`, and tenant→advertiser links exist.
 
 ## Phase 4 — phone picker + activate
 
@@ -145,9 +145,32 @@ python backend/scripts/seed_platform_publisher.py
 
 Set `PUBLISHER_API_KEY` on **voice-ai-platform** (see `voice-ai-platform/.env.example`). Legacy `INTERNAL_ADS_API_KEY` still works as a fallback but does not accrue publisher revenue.
 
-Tenant routes under `/dashboard` are unchanged.
+## Tenant dashboard + AdsFind (integrated)
+
+Logged-in **tenant** users get an **Advertising** tab at `/dashboard/advertising` without a separate AdsFind signup.
+
+### Tenant ↔ advertiser linking (Option B + auto-provision)
+
+1. Tenant calls `/api/v1/dashboard/advertising/*` with the normal tenant JWT (`type: access`).
+2. Backend resolves a linked `AdvertiserUser` via `users.advertiser_user_id`, or the same email on `advertiser_users`, or **auto-provisions** `Advertiser` + `AdvertiserUser` from the tenant profile (`business_name`, phone) on first use.
+3. Standalone `/advertise` signups remain available; sharing an email attaches the existing advertiser row to the tenant user.
+
+Home (`/dashboard`) includes **Ad spend**, **Ad clicks**, and **Active campaigns** in `GET /api/v1/dashboard/summary` → `advertising`.
+
+```bash
+# Wallet + campaigns via tenant token (no advertiser_access_token)
+curl -s http://localhost:8000/api/v1/dashboard/advertising/wallet -H "Authorization: Bearer $TOKEN" | jq
+curl -s http://localhost:8000/api/v1/dashboard/advertising/campaigns -H "Authorization: Bearer $TOKEN" | jq
+curl -s http://localhost:8000/api/v1/dashboard/summary -H "Authorization: Bearer $TOKEN" | jq '.advertising'
+```
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:3000/dashboard | Home — voice stats + ad metric cards |
+| http://localhost:3000/dashboard/advertising | Ads Manager (wallet, campaigns, 3-step wizard) |
+| http://localhost:3000/admin/dashboard | Same as `/admin` — ops console |
 
 ## Scope
 
-**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate, AdsFind advertiser accounts  
+**Done:** Phase 1 auth, Phase 2 dashboard home, Phase 3 business setup, Phase 4 phone picker + activate, AdsFind advertiser accounts, **tenant Advertising tab**  
 **TODO:** Call logs, Stripe billing, real wallet payments
