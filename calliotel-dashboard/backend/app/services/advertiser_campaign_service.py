@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.ad_event_types import VALID_CLICK
 from app.models.ads import AdEvent, Campaign
 from app.services.campaign_review_service import PENDING_REVIEW_STATUS, review_deadline_from
 
@@ -13,7 +14,7 @@ def campaign_served_counts(db: Session, *, campaign_ids: list[str]) -> dict[str,
         return {}
     rows = db.execute(
         select(AdEvent.campaign_id, func.count())
-        .where(AdEvent.campaign_id.in_(campaign_ids), AdEvent.event_type == "served")
+        .where(AdEvent.campaign_id.in_(campaign_ids), AdEvent.event_type == VALID_CLICK)
         .group_by(AdEvent.campaign_id)
     ).all()
     return {str(cid): int(count) for cid, count in rows}

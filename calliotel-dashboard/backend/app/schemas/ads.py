@@ -6,6 +6,7 @@ class AdMatchResponse(BaseModel):
     ad_copy: str
     campaign_id: str
     destination_url: str
+    click_url: str = Field(description="Signed redirect URL; charges advertiser wallet on first valid click per IP/UA/day")
     match_score: int = Field(ge=0)
 
 

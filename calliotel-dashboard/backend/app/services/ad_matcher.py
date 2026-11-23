@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.ads import AdEvent, Campaign, Publisher, PublisherEvent
 from app.services.campaign_review_service import ensure_review_processed
+from app.services.click_token_service import build_click_url
 from app.services.publisher_service import publisher_earnings_for_event
 
 # Only live (post-review) campaigns serve in voice/AdsFind matching.
@@ -117,10 +118,12 @@ def find_sponsored_ad(
             publisher.pending_balance = float(Decimal(str(publisher.pending_balance)) + earnings)
         db.commit()
 
+    publisher_id = publisher.id if publisher is not None else None
     return {
         "brand_name": best.brand_name,
         "ad_copy": best.ad_copy,
         "campaign_id": best.id,
         "destination_url": best.destination_url,
+        "click_url": build_click_url(campaign_id=best.id, publisher_id=publisher_id),
         "match_score": best_score,
     }

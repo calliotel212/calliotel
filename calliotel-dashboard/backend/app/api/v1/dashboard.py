@@ -10,12 +10,14 @@ from app.schemas.advertiser import (
     CampaignCreateRequest,
     CampaignResponse,
     CampaignUpdateRequest,
+    AdvertiserShieldStatsResponse,
     WalletDepositRequest,
     WalletDepositResponse,
     WalletResponse,
 )
 from app.schemas.dashboard import DashboardSummaryResponse
 from app.services import advertiser_campaign_service, advertiser_wallet_service, dashboard_service
+from app.services.advertiser_shield_service import blocked_fraud_clicks_for_advertiser
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -31,6 +33,15 @@ def dashboard_summary(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+
+
+@router.get("/advertising/shield/stats", response_model=AdvertiserShieldStatsResponse)
+def advertising_shield_stats(
+    current: AdvertiserUser = Depends(get_tenant_linked_advertiser_user),
+    db: Session = Depends(get_db),
+) -> AdvertiserShieldStatsResponse:
+    blocked = blocked_fraud_clicks_for_advertiser(db, advertiser_id=current.advertiser_id)
+    return AdvertiserShieldStatsResponse(blocked_fraud_clicks=blocked)
 
 
 @router.get("/advertising/wallet", response_model=WalletResponse)

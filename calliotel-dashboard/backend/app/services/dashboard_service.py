@@ -3,10 +3,12 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.models.ad_event_types import VALID_CLICK
 from app.models.ads import AdEvent, Campaign
 from app.models.user import Tenant, User
 from app.schemas.dashboard import DashboardAdvertisingMetrics, DashboardSummaryResponse
 from app.services import tenant_advertiser_service
+from app.services.advertiser_shield_service import blocked_fraud_clicks_for_advertiser
 
 
 def _advertiser_ad_metrics(db: Session, *, advertiser_id: str) -> DashboardAdvertisingMetrics:
@@ -15,7 +17,7 @@ def _advertiser_ad_metrics(db: Session, *, advertiser_id: str) -> DashboardAdver
             select(func.count())
             .select_from(AdEvent)
             .join(Campaign, Campaign.id == AdEvent.campaign_id)
-            .where(Campaign.advertiser_id == advertiser_id, AdEvent.event_type == "served")
+            .where(Campaign.advertiser_id == advertiser_id, AdEvent.event_type == VALID_CLICK)
         )
         or 0
     )
@@ -23,7 +25,7 @@ def _advertiser_ad_metrics(db: Session, *, advertiser_id: str) -> DashboardAdver
         select(func.coalesce(func.sum(Campaign.max_cpc), 0))
         .select_from(AdEvent)
         .join(Campaign, Campaign.id == AdEvent.campaign_id)
-        .where(Campaign.advertiser_id == advertiser_id, AdEvent.event_type == "served")
+        .where(Campaign.advertiser_id == advertiser_id, AdEvent.event_type == VALID_CLICK)
     ).scalar_one()
     spend = Decimal(str(spend_row or 0))
     active = int(
@@ -34,7 +36,13 @@ def _advertiser_ad_metrics(db: Session, *, advertiser_id: str) -> DashboardAdver
         )
         or 0
     )
-    return DashboardAdvertisingMetrics(ad_spend_usd=spend, ad_clicks=clicks, active_campaigns=active)
+    blocked = blocked_fraud_clicks_for_advertiser(db, advertiser_id=advertiser_id)
+    return DashboardAdvertisingMetrics(
+        ad_spend_usd=spend,
+        ad_clicks=clicks,
+        active_campaigns=active,
+        blocked_fraud_clicks=blocked,
+    )
 
 
 def get_dashboard_summary(db: Session, *, tenant_id: str, user: User | None = None) -> DashboardSummaryResponse:

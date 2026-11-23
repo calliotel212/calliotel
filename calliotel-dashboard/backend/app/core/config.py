@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     admin_api_key: str = ""
     admin_jwt_expire_minutes: int = 30
     admin_emails: str = ""
+    redis_url: str = "redis://redis:6379/0"
 
 
 settings = Settings()

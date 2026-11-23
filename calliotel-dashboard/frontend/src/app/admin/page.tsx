@@ -12,6 +12,9 @@ type Tab = "overview" | "kyc" | "campaigns" | "publishers";
 
 type Metrics = {
   total_revenue_usd: string;
+  total_served: number;
+  valid_clicks: number;
+  blocked_fraud_clicks: number;
   total_clicks: number;
   revenue_formula: string;
 };
@@ -301,11 +304,17 @@ export default function AdminPage() {
         ) : null}
 
         {tab === "overview" && metrics ? (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             <StatCard label="Est. revenue" value={`$${Number(metrics.total_revenue_usd).toFixed(2)}`} />
-            <StatCard label="Served events" value={metrics.total_clicks.toLocaleString()} />
+            <StatCard label="Served events" value={metrics.total_served.toLocaleString()} />
+            <StatCard label="Valid clicks" value={metrics.valid_clicks.toLocaleString()} />
+            <StatCard
+              label="Blocked fraud clicks"
+              value={metrics.blocked_fraud_clicks.toLocaleString()}
+              highlight
+            />
             <StatCard label="Advertisers" value={String(advertisers.length)} />
-            <StatCard label="Pending reviews" value={String(pendingCampaigns.length)} highlight />
+            <StatCard label="Pending reviews" value={String(pendingCampaigns.length)} />
           </section>
         ) : null}
 

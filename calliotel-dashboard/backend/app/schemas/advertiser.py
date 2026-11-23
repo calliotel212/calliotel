@@ -46,6 +46,10 @@ class WalletDepositResponse(BaseModel):
     deposited_usd: Decimal
 
 
+class AdvertiserShieldStatsResponse(BaseModel):
+    blocked_fraud_clicks: int
+
+
 class CampaignCreateRequest(BaseModel):
     brand_name: str = Field(min_length=1, max_length=255)
     ad_copy: str = Field(min_length=1)
