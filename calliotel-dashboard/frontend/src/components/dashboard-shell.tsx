@@ -8,8 +8,12 @@ import { clearAccessToken, getAccessToken, logout } from "@/lib/auth";
 
 type MeResponse = { email: string; tenant_name: string };
 
-const NAV = [
+const TOP_TABS = [
   { href: "/dashboard", label: "Home" },
+  { href: "/dashboard/advertising", label: "Advertising" },
+];
+
+const NAV = [
   { href: "/dashboard/setup", label: "Setup" },
   { href: "/dashboard/numbers", label: "Numbers" },
   { href: "/dashboard/calls", label: "Calls" },
@@ -85,7 +89,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 md:px-6">
+        <header className="border-b border-slate-200 bg-white">
+          <div className="flex items-center justify-between px-4 py-3 md:px-6">
           <div className="md:hidden">
             <p className="text-sm font-semibold text-brand-600">Calliotel</p>
           </div>
@@ -100,6 +105,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           >
             Logout
           </button>
+          </div>
+          <nav className="flex gap-1 overflow-x-auto border-t border-slate-100 px-4 md:px-6">
+            {TOP_TABS.map((item) => {
+              const active =
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
+                  : pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+                    active
+                      ? "border-brand-600 text-brand-600"
+                      : "border-transparent text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
         </header>
         <nav className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 md:hidden">
           {NAV.map((item) => (

@@ -8,7 +8,7 @@ import {
   setAdminAccessToken,
 } from "@/lib/admin-auth";
 
-type Tab = "overview" | "kyc" | "campaigns" | "directory";
+type Tab = "overview" | "kyc" | "campaigns" | "publishers";
 
 type Metrics = {
   total_revenue_usd: string;
@@ -249,9 +249,9 @@ export default function AdminPage() {
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
-    { id: "kyc", label: "KYC & review", count: kycQueue.length + pendingCampaigns.length },
+    { id: "kyc", label: "Advertisers (KYC)", count: kycQueue.length + pendingCampaigns.length },
     { id: "campaigns", label: "Campaigns" },
-    { id: "directory", label: "Directory" },
+    { id: "publishers", label: "Publishers" },
   ];
 
   return (
@@ -485,42 +485,23 @@ export default function AdminPage() {
           </section>
         ) : null}
 
-        {tab === "directory" ? (
-          <div className="grid gap-10 lg:grid-cols-2">
-            <div>
-              <h2 className="mb-4 text-lg font-semibold text-white">Advertisers</h2>
-              <DataTable
-                headers={["Business", "KYC", "Campaigns", "Wallet"]}
-                empty="No advertisers"
-                rows={advertisers.map((a) => (
-                  <tr key={a.id} className="border-t border-slate-800/80">
-                    <td className="px-4 py-3 font-medium text-white">{a.business_name || a.name}</td>
-                    <td className="px-4 py-3">
-                      <span className={statusBadge(a.kyc_status)}>{a.kyc_status}</span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-400">{a.campaign_count}</td>
-                    <td className="px-4 py-3 text-emerald-400">${Number(a.wallet_balance).toFixed(2)}</td>
-                  </tr>
-                ))}
-              />
-            </div>
-            <div>
-              <h2 className="mb-4 text-lg font-semibold text-white">Publishers</h2>
-              <DataTable
-                headers={["Name", "Pending", "Paid", "Users", "Impressions"]}
-                empty="No publishers"
-                rows={publishers.map((p) => (
-                  <tr key={p.id} className="border-t border-slate-800/80">
-                    <td className="px-4 py-3 font-medium text-white">{p.name}</td>
-                    <td className="px-4 py-3 text-amber-300">${Number(p.pending_balance).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-emerald-400">${Number(p.paid_balance).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-slate-400">{p.user_count}</td>
-                    <td className="px-4 py-3 text-slate-400">{p.impressions}</td>
-                  </tr>
-                ))}
-              />
-            </div>
-          </div>
+        {tab === "publishers" ? (
+          <section>
+            <h2 className="mb-4 text-lg font-semibold text-white">Publisher partners</h2>
+            <DataTable
+              headers={["Name", "Pending", "Paid", "Users", "Impressions"]}
+              empty="No publishers"
+              rows={publishers.map((p) => (
+                <tr key={p.id} className="border-t border-slate-800/80 hover:bg-slate-900/40">
+                  <td className="px-4 py-3 font-medium text-white">{p.name}</td>
+                  <td className="px-4 py-3 text-amber-300">${Number(p.pending_balance).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-emerald-400">${Number(p.paid_balance).toFixed(2)}</td>
+                  <td className="px-4 py-3 text-slate-400">{p.user_count}</td>
+                  <td className="px-4 py-3 text-slate-400">{p.impressions}</td>
+                </tr>
+              ))}
+            />
+          </section>
         ) : null}
       </div>
     </main>
