@@ -108,8 +108,13 @@ curl -s -X POST http://localhost:8000/api/v1/advertisers/wallet/deposit \
 
 curl -s -X POST http://localhost:8000/api/v1/advertisers/campaigns \
   -H "Authorization: Bearer $ADV_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"brand_name":"Demo","ad_copy":"We fix leaks fast.","destination_url":"https://example.com","intent_description":"emergency plumber","max_cpc":2.5}' | jq
+  -d '{"brand_name":"Demo","ad_copy":"We fix leaks fast.","destination_url":"https://example.com","intent_description":"emergency plumber","max_cpc":2.5,"daily_budget":50,"target_countries":["AE"],"target_languages":["en"]}' | jq
+
+# Internal match (optional geo filters — empty campaign target arrays = worldwide)
+curl -s 'http://localhost:8000/api/v1/internal/ads/match?q=airport+car+rental&country=AE&language=en' | jq
 ```
+
+Campaign `target_countries` / `target_languages` use ISO-style codes; empty lists mean no restriction on that dimension. The match API applies the same rule when `country` / `language` query params are set.
 
 Tenant routes under `/dashboard` are unchanged.
 

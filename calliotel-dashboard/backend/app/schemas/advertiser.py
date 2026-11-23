@@ -46,6 +46,9 @@ class CampaignCreateRequest(BaseModel):
     destination_url: str = Field(min_length=1, max_length=2048)
     intent_description: str = Field(min_length=1)
     max_cpc: Decimal = Field(gt=0, max_digits=12, decimal_places=4)
+    daily_budget: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=4)
+    target_countries: list[str] = Field(default_factory=list)
+    target_languages: list[str] = Field(default_factory=list)
     status: str = Field(default="active", pattern="^(active|paused)$")
 
 
@@ -55,6 +58,9 @@ class CampaignUpdateRequest(BaseModel):
     destination_url: str | None = Field(default=None, min_length=1, max_length=2048)
     intent_description: str | None = Field(default=None, min_length=1)
     max_cpc: Decimal | None = Field(default=None, gt=0, max_digits=12, decimal_places=4)
+    daily_budget: Decimal | None = Field(default=None, ge=0, max_digits=12, decimal_places=4)
+    target_countries: list[str] | None = None
+    target_languages: list[str] | None = None
     status: str | None = Field(default=None, pattern="^(active|paused)$")
 
 
@@ -66,6 +72,10 @@ class CampaignResponse(BaseModel):
     destination_url: str
     intent_description: str
     max_cpc: Decimal
+    daily_budget: Decimal
+    target_countries: list[str]
+    target_languages: list[str]
     status: str
+    clicks: int = 0  # served-event count until dedicated click tracking exists
 
     model_config = {"from_attributes": True}

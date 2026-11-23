@@ -35,7 +35,40 @@ def _score_query_against_campaign(user_query: str, campaign: Campaign) -> int:
     return score
 
 
-def find_sponsored_ad(db: Session, user_query: str, *, log_event: bool = True) -> dict[str, Any] | None:
+def campaign_matches_targeting(
+    campaign: Campaign,
+    *,
+    country: str | None,
+    language: str | None,
+) -> bool:
+    """Geo/language filter for match API.
+
+    Empty ``target_countries`` / ``target_languages`` on a campaign means no
+    restriction for that dimension. When the match request includes ``country``
+    or ``language``, the campaign must either have an empty target list or
+    include that value (case-insensitive).
+    """
+    if country:
+        norm = country.strip().upper()
+        targets = [c.upper() for c in (campaign.target_countries or []) if c]
+        if targets and norm not in targets:
+            return False
+    if language:
+        norm = language.strip().lower()
+        targets = [lang.lower() for lang in (campaign.target_languages or []) if lang]
+        if targets and norm not in targets:
+            return False
+    return True
+
+
+def find_sponsored_ad(
+    db: Session,
+    user_query: str,
+    *,
+    country: str | None = None,
+    language: str | None = None,
+    log_event: bool = True,
+) -> dict[str, Any] | None:
     """Return the best active campaign match for ``user_query``, or None."""
     query = user_query.strip()
     if not query:
@@ -48,6 +81,8 @@ def find_sponsored_ad(db: Session, user_query: str, *, log_event: bool = True) -
     best: Campaign | None = None
     best_score = 0
     for campaign in campaigns:
+        if not campaign_matches_targeting(campaign, country=country, language=language):
+            continue
         score = _score_query_against_campaign(query, campaign)
         if score > best_score:
             best_score = score

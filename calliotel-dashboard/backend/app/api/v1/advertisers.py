@@ -82,13 +82,25 @@ def wallet_deposit(
     return WalletDepositResponse(balance_usd=balance, deposited_usd=deposited)
 
 
+def _campaign_response(db: Session, campaign) -> CampaignResponse:
+    counts = advertiser_campaign_service.campaign_served_counts(db, campaign_ids=[campaign.id])
+    base = CampaignResponse.model_validate(campaign)
+    return base.model_copy(update={"clicks": counts.get(campaign.id, 0)})
+
+
 @router.get("/campaigns", response_model=list[CampaignResponse])
 def list_campaigns(
     current: AdvertiserUser = Depends(get_current_advertiser_user),
     db: Session = Depends(get_db),
 ) -> list[CampaignResponse]:
     items = advertiser_campaign_service.list_campaigns(db, advertiser_id=current.advertiser_id)
-    return [CampaignResponse.model_validate(c) for c in items]
+    ids = [c.id for c in items]
+    counts = advertiser_campaign_service.campaign_served_counts(db, campaign_ids=ids)
+    out: list[CampaignResponse] = []
+    for c in items:
+        base = CampaignResponse.model_validate(c)
+        out.append(base.model_copy(update={"clicks": counts.get(c.id, 0)}))
+    return out
 
 
 @router.post("/campaigns", response_model=CampaignResponse, status_code=status.HTTP_201_CREATED)
@@ -105,9 +117,12 @@ def create_campaign(
         destination_url=str(body.destination_url),
         intent_description=body.intent_description,
         max_cpc=body.max_cpc,
+        daily_budget=body.daily_budget,
+        target_countries=body.target_countries,
+        target_languages=body.target_languages,
         status=body.status,
     )
-    return CampaignResponse.model_validate(campaign)
+    return _campaign_response(db, campaign)
 
 
 @router.get("/campaigns/{campaign_id}", response_model=CampaignResponse)
@@ -121,7 +136,7 @@ def get_campaign(
     )
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
-    return CampaignResponse.model_validate(campaign)
+    return _campaign_response(db, campaign)
 
 
 @router.patch("/campaigns/{campaign_id}", response_model=CampaignResponse)
@@ -144,6 +159,9 @@ def patch_campaign(
         destination_url=str(body.destination_url) if body.destination_url is not None else None,
         intent_description=body.intent_description,
         max_cpc=body.max_cpc,
+        daily_budget=body.daily_budget,
+        target_countries=body.target_countries,
+        target_languages=body.target_languages,
         status=body.status,
     )
-    return CampaignResponse.model_validate(updated)
+    return _campaign_response(db, updated)
