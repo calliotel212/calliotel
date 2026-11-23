@@ -110,11 +110,36 @@ curl -s -X POST http://localhost:8000/api/v1/advertisers/campaigns \
   -H "Authorization: Bearer $ADV_TOKEN" -H 'Content-Type: application/json' \
   -d '{"brand_name":"Demo","ad_copy":"We fix leaks fast.","destination_url":"https://example.com","intent_description":"emergency plumber","max_cpc":2.5,"daily_budget":50,"target_countries":["AE"],"target_languages":["en"]}' | jq
 
-# Internal match (optional geo filters — empty campaign target arrays = worldwide)
-curl -s 'http://localhost:8000/api/v1/internal/ads/match?q=airport+car+rental&country=AE&language=en' | jq
+# Internal match — requires X-Publisher-Api-Key (see Publisher dashboard below)
+curl -s 'http://localhost:8000/api/v1/internal/ads/match?q=airport+car+rental&country=AE&language=en' \
+  -H "X-Publisher-Api-Key: $PUBLISHER_API_KEY" | jq
 ```
 
 Campaign `target_countries` / `target_languages` use ISO-style codes; empty lists mean no restriction on that dimension. The match API applies the same rule when `country` / `language` query params are set.
+
+## Publisher portal (AdsFind)
+
+JWT type `publisher`, stored in sessionStorage as `publisher_access_token`. API keys are SHA-256 hashed server-side; the raw key is returned once on register or rotate.
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:3000/publishers | Join / log in as a publisher |
+| http://localhost:3000/publisher/dashboard | Balances, stats, integration snippets |
+
+```bash
+PUB=$(curl -s -X POST http://localhost:8000/api/v1/publishers/register \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"pub@example.com","password":"testpass123","name":"My AI App"}')
+export PUBLISHER_API_KEY=$(echo "$PUB" | jq -r .api_key)
+export PUB_TOKEN=$(echo "$PUB" | jq -r .access_token)
+
+curl -s http://localhost:8000/api/v1/publishers/me -H "Authorization: Bearer $PUB_TOKEN" | jq
+
+# Platform key for voice-ai (after migrate + seed)
+python backend/scripts/seed_platform_publisher.py
+```
+
+Set `PUBLISHER_API_KEY` on **voice-ai-platform** (see `voice-ai-platform/.env.example`). Legacy `INTERNAL_ADS_API_KEY` still works as a fallback but does not accrue publisher revenue.
 
 Tenant routes under `/dashboard` are unchanged.
 

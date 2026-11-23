@@ -18,9 +18,13 @@ def main() -> int:
     params = urllib.parse.urlencode({"q": QUERY})
     url = f"{BASE_URL}?{params}"
     headers: dict[str, str] = {"Accept": "application/json"}
-    api_key = os.environ.get("INTERNAL_ADS_API_KEY", "").strip()
-    if api_key:
-        headers["X-Internal-Ads-Api-Key"] = api_key
+    pub_key = os.environ.get("PUBLISHER_API_KEY", "").strip()
+    if pub_key:
+        headers["X-Publisher-Api-Key"] = pub_key
+    else:
+        api_key = os.environ.get("INTERNAL_ADS_API_KEY", "").strip()
+        if api_key:
+            headers["X-Internal-Ads-Api-Key"] = api_key
 
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:

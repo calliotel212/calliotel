@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.ads import AdEvent, Campaign
+from app.models.ads import AdEvent, Campaign, Publisher, PublisherEvent
+from app.services.publisher_service import publisher_earnings_for_event
+
+# Forward-compatible with admin campaign approval (PR #6): only active campaigns serve.
+SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _MIN_SCORE = 2
@@ -68,13 +73,16 @@ def find_sponsored_ad(
     country: str | None = None,
     language: str | None = None,
     log_event: bool = True,
+    publisher: Publisher | None = None,
 ) -> dict[str, Any] | None:
     """Return the best active campaign match for ``user_query``, or None."""
     query = user_query.strip()
     if not query:
         return None
 
-    campaigns = db.scalars(select(Campaign).where(Campaign.status == "active")).all()
+    campaigns = db.scalars(
+        select(Campaign).where(Campaign.status.in_(SERVABLE_CAMPAIGN_STATUSES))
+    ).all()
     if not campaigns:
         return None
 
@@ -93,6 +101,17 @@ def find_sponsored_ad(
 
     if log_event:
         db.add(AdEvent(campaign_id=best.id, event_type="served"))
+        if publisher is not None:
+            earnings = publisher_earnings_for_event(best.max_cpc, publisher.revenue_share_percentage)
+            db.add(
+                PublisherEvent(
+                    publisher_id=publisher.id,
+                    campaign_id=best.id,
+                    event_type="impression",
+                    revenue_amount=earnings,
+                )
+            )
+            publisher.pending_balance = float(Decimal(str(publisher.pending_balance)) + earnings)
         db.commit()
 
     return {
