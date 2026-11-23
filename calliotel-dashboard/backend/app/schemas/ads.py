@@ -7,7 +7,7 @@ class AdMatchResponse(BaseModel):
     campaign_id: str
     destination_url: str
     click_url: str = Field(description="Signed redirect URL; charges advertiser wallet on first valid click per IP/UA/day")
-    match_score: int = Field(ge=0)
+    match_score: int = Field(ge=1, le=10, description="Relevance 1–10 (LLM semantic or keyword fallback)")
 
 
 class AdMatchQuery(BaseModel):
