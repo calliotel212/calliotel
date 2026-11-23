@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:3000"
     resend_api_key: str = ""
     email_from: str = "Calliotel <noreply@calliotel.ai>"
+    internal_ads_api_key: str = ""
 
 
 settings = Settings()

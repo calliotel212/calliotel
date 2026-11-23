@@ -51,6 +51,9 @@ class Settings:
     livekit_api_key: str
     livekit_api_secret: str
     redis_url: str
+    dashboard_api_url: str
+    internal_ads_api_key: str
+    ads_match_timeout_seconds: float
 
 
 def get_settings() -> Settings:
@@ -81,6 +84,9 @@ def get_settings() -> Settings:
         livekit_api_key=_env("LIVEKIT_API_KEY", "devkey"),
         livekit_api_secret=_env("LIVEKIT_API_SECRET", "secret"),
         redis_url=_env("REDIS_URL", "redis://127.0.0.1:6379/0"),
+        dashboard_api_url=_env("DASHBOARD_API_URL", ""),
+        internal_ads_api_key=_env("INTERNAL_ADS_API_KEY", ""),
+        ads_match_timeout_seconds=float(_env("ADS_MATCH_TIMEOUT_SECONDS", "3.0")),
     )
 
 

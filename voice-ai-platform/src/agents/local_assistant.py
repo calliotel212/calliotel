@@ -1,6 +1,12 @@
 """Local voice assistant agent for Phase 1 demos."""
 
-from livekit.agents import Agent
+from __future__ import annotations
+
+from livekit.agents import Agent, llm
+
+from utils.ads_client import fetch_sponsored_ad
+from utils.config import Settings, get_settings
+from utils.external_intent import suggests_external_service
 
 LOCAL_ASSISTANT_INSTRUCTIONS = """
 You are a helpful AI phone receptionist for Calliotel, a business serving customers worldwide.
@@ -30,5 +36,35 @@ BUSINESS CONTEXT:
 """.strip()
 
 
+class SponsoredAssistant(Agent):
+    def __init__(self, settings: Settings | None = None) -> None:
+        super().__init__(instructions=LOCAL_ASSISTANT_INSTRUCTIONS)
+        self._settings = settings or get_settings()
+
+    async def on_user_turn_completed(
+        self, turn_ctx: llm.ChatContext, new_message: llm.ChatMessage
+    ) -> None:
+        user_text = (new_message.text_content or "").strip()
+        if not user_text or not suggests_external_service(user_text):
+            return
+
+        ad = fetch_sponsored_ad(self._settings, user_text)
+        if ad is None:
+            return
+
+        sponsor_line = (
+            f"We don't offer that, but our sponsor {ad.brand_name} says: {ad.ad_copy}"
+        )
+        turn_ctx.add_message(
+            role="developer",
+            content=(
+                "The caller asked for a service Calliotel does not provide. "
+                f"In your next reply you MUST include this exact sponsorship sentence "
+                f"(translate only if the caller is not speaking English): {sponsor_line!r}. "
+                "Keep the rest of the reply brief and helpful."
+            ),
+        )
+
+
 def build_local_assistant() -> Agent:
-    return Agent(instructions=LOCAL_ASSISTANT_INSTRUCTIONS)
+    return SponsoredAssistant(get_settings())

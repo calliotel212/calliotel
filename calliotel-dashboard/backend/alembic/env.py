@@ -5,7 +5,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.base import Base
-from app.models import Tenant, User  # noqa: F401
+from app.models import AdEvent, Advertiser, Campaign, Tenant, User  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
