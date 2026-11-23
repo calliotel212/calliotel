@@ -20,7 +20,8 @@ DEMO_CAMPAIGNS = [
         "ad_copy": "Book a reliable car from $29/day — airport pickup and 24/7 roadside assist.",
         "destination_url": "https://example.com/demo-car-rental",
         "intent_description": (
-            "car rental rent vehicle hire automobile SUV airport pickup driving transport"
+            "Car rental and vehicle hire for driving around cities like Beirut. "
+            "Rent automobiles, SUVs, and airport pickup transport."
         ),
         "max_cpc": "1.2500",
     },
@@ -29,7 +30,10 @@ DEMO_CAMPAIGNS = [
         "brand_name": "Demo Hotel",
         "ad_copy": "Weekend stays from $99 with free breakfast and late checkout.",
         "destination_url": "https://example.com/demo-hotel",
-        "intent_description": "hotel room lodging stay accommodation book reservation travel",
+        "intent_description": (
+            "Hotel rooms and lodging for travelers who need a place to sleep tonight. "
+            "Book accommodation, stays, and reservations."
+        ),
         "max_cpc": "2.0000",
     },
     {
@@ -37,7 +41,10 @@ DEMO_CAMPAIGNS = [
         "brand_name": "Demo Flower Shop",
         "ad_copy": "Same-day flower delivery for birthdays, weddings, and apologies.",
         "destination_url": "https://example.com/demo-flowers",
-        "intent_description": "flowers florist bouquet delivery roses gift anniversary wedding",
+        "intent_description": (
+            "Florist and flower shop for gifts and presents — bouquets, roses, anniversaries, "
+            "and surprises for partners and spouses."
+        ),
         "max_cpc": "0.7500",
     },
 ]
@@ -56,6 +63,9 @@ def seed() -> None:
                 select(Campaign).where(Campaign.brand_name == item["brand_name"])
             )
             if existing:
+                existing.intent_description = item["intent_description"]
+                existing.ad_copy = item["ad_copy"]
+                existing.status = "active"
                 continue
 
             db.add(

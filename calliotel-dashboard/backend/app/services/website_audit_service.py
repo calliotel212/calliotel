@@ -14,8 +14,8 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-from app.core.config import settings
 from app.schemas.audit import WebsiteAuditResponse
+from app.services.llm_client import llm_model_for_provider, resolve_llm_provider
 
 SCRAPE_TIMEOUT = 10.0
 TEXT_SNIPPET_MAX = 4000
@@ -276,42 +276,12 @@ def _mock_insights(
     return pack["competitors"], missing[:8], pack["ads"]
 
 
-def _llm_provider() -> tuple[str, str, str] | None:
-    if settings.openai_api_key.strip():
-        return (
-            "openai",
-            "https://api.openai.com/v1/chat/completions",
-            settings.openai_api_key.strip(),
-        )
-    if settings.groq_api_key.strip():
-        return (
-            "groq",
-            "https://api.groq.com/openai/v1/chat/completions",
-            settings.groq_api_key.strip(),
-        )
-    if settings.deepseek_api_key.strip():
-        return (
-            "deepseek",
-            "https://api.deepseek.com/v1/chat/completions",
-            settings.deepseek_api_key.strip(),
-        )
-    return None
-
-
-def _llm_models(provider: str) -> str:
-    if provider == "groq":
-        return "llama-3.3-70b-versatile"
-    if provider == "deepseek":
-        return "deepseek-chat"
-    return "gpt-4o-mini"
-
-
 def _fetch_llm_insights(url: str, scrape: ScrapeResult) -> tuple[str, list[str], list[str]] | None:
-    provider_info = _llm_provider()
+    provider_info = resolve_llm_provider()
     if not provider_info:
         return None
     provider, endpoint, api_key = provider_info
-    model = _llm_models(provider)
+    model = llm_model_for_provider(provider)
     prompt = {
         "role": "user",
         "content": (
