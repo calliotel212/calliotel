@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -6,7 +7,9 @@ from pydantic import BaseModel, EmailStr, Field
 class AdvertiserRegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-    business_name: str | None = Field(default=None, max_length=255)
+    business_name: str = Field(min_length=1, max_length=255)
+    phone_number: str = Field(min_length=6, max_length=32)
+    website_url: str = Field(min_length=4, max_length=2048)
 
 
 class AdvertiserLoginRequest(BaseModel):
@@ -24,6 +27,9 @@ class AdvertiserMeResponse(BaseModel):
     email: str
     advertiser_id: str
     business_name: str
+    phone_number: str | None = None
+    website_url: str | None = None
+    kyc_status: str
     wallet_balance: Decimal
 
 
@@ -76,5 +82,7 @@ class CampaignResponse(BaseModel):
     target_languages: list[str]
     status: str
     clicks: int = 0  # served-event count until dedicated click tracking exists
+    review_ends_at: datetime | None = None
+    created_at: datetime | None = None
 
     model_config = {"from_attributes": True}

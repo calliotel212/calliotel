@@ -17,7 +17,18 @@ type Campaign = {
   destination_url: string;
   intent_description: string;
   clicks: number;
+  review_ends_at?: string | null;
 };
+
+function reviewCountdown(endsAt: string | null | undefined): string | null {
+  if (!endsAt) return null;
+  const end = new Date(endsAt).getTime();
+  const diff = end - Date.now();
+  if (diff <= 0) return "Review completing soon";
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  return `${h}h ${m}m until auto-go-live`;
+}
 
 type Wallet = { balance_usd: string };
 
@@ -135,16 +146,20 @@ export default function AdvertiserDashboardPage() {
   }
 
   function statusLabel(status: string): string {
-    if (status === "pending_approval") return "Pending review";
+    if (status === "pending_review" || status === "pending_approval") return "In review";
     if (status === "rejected") return "Rejected";
     if (status === "active") return "Active";
     if (status === "paused") return "Paused";
     return status;
   }
 
+  const hasReviewQueue = campaigns.some(
+    (c) => c.status === "pending_review" || c.status === "pending_approval",
+  );
+
   async function onToggleStatus(c: Campaign) {
     if (!token) return;
-    if (c.status === "pending_approval" || c.status === "rejected") return;
+    if (c.status === "pending_review" || c.status === "pending_approval" || c.status === "rejected") return;
     const next = c.status === "active" ? "paused" : "active";
     try {
       await apiPatch(`/api/v1/advertisers/campaigns/${c.id}`, { status: next }, token);
@@ -218,6 +233,10 @@ export default function AdvertiserDashboardPage() {
           <p className="rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">
             {error}
           </p>
+        ) : null}
+
+        {hasReviewQueue ? (
+          <ReviewBanner />
         ) : null}
 
         <section className="rounded-xl border border-slate-700 bg-ads-slate p-6">
@@ -462,16 +481,23 @@ export default function AdvertiserDashboardPage() {
                     <tr key={c.id} className="border-t border-slate-800">
                       <td className="px-4 py-3 font-medium text-white">{c.brand_name}</td>
                       <td className="px-4 py-3">
-                        {c.status === "pending_approval" || c.status === "rejected" ? (
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium ${
-                              c.status === "pending_approval"
-                                ? "bg-amber-900/40 text-amber-200"
-                                : "bg-red-900/40 text-red-200"
-                            }`}
-                          >
-                            {statusLabel(c.status)}
-                          </span>
+                        {c.status === "pending_review" ||
+                        c.status === "pending_approval" ||
+                        c.status === "rejected" ? (
+                          <hgroup className="space-y-1">
+                            <span
+                              className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                                c.status === "rejected"
+                                  ? "bg-red-900/40 text-red-200"
+                                  : "bg-amber-900/40 text-amber-200"
+                              }`}
+                            >
+                              {statusLabel(c.status)}
+                            </span>
+                            {c.status !== "rejected" && reviewCountdown(c.review_ends_at) ? (
+                              <p className="text-[10px] text-amber-200/80">{reviewCountdown(c.review_ends_at)}</p>
+                            ) : null}
+                          </hgroup>
                         ) : (
                           <button
                             type="button"
@@ -505,6 +531,18 @@ export default function AdvertiserDashboardPage() {
         </section>
       </div>
     </AdvertiserDashboardShell>
+  );
+}
+
+function ReviewBanner() {
+  return (
+    <section className="rounded-xl border border-amber-700/40 bg-gradient-to-r from-amber-950/60 to-ads-slate px-5 py-4">
+      <p className="text-sm font-semibold text-amber-100">48-hour standard review</p>
+      <p className="mt-1 text-sm text-slate-300">
+        New campaigns stay in review for up to 48 hours. We verify your business details, then ads go live
+        automatically unless flagged. You can still fund your wallet and edit creatives while waiting.
+      </p>
+    </section>
   );
 }
 

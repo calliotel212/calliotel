@@ -4,17 +4,24 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.ads import AdEvent, Advertiser, AdvertiserUser, Campaign
-from app.models.user import Tenant, User
+from app.services import publisher_service
+from app.services.campaign_review_service import (
+    LEGACY_PENDING_STATUS,
+    PENDING_REVIEW_STATUS,
+    ensure_review_processed,
+)
 
 # Documented in AdminMetricsResponse.revenue_formula
 REVENUE_FORMULA = (
     "SUM(campaigns.max_cpc) for each ad_events row where event_type = 'served' "
     "(estimated click charges; wallet debits on serve are not implemented yet)."
 )
+
+_PENDING_STATUSES = (PENDING_REVIEW_STATUS, LEGACY_PENDING_STATUS)
 
 
 def get_metrics(db: Session) -> tuple[Decimal, int, str]:
@@ -33,22 +40,31 @@ def get_metrics(db: Session) -> tuple[Decimal, int, str]:
     return total_revenue, total_clicks, REVENUE_FORMULA
 
 
-def list_advertisers(db: Session) -> list[dict]:
-    advertisers = db.scalars(select(Advertiser).order_by(Advertiser.name)).all()
+def list_advertisers(db: Session, *, kyc_status: str | None = None) -> list[dict]:
+    users = db.scalars(
+        select(AdvertiserUser)
+        .options(joinedload(AdvertiserUser.advertiser))
+        .order_by(AdvertiserUser.created_at.desc())
+    ).all()
     out: list[dict] = []
-    for adv in advertisers:
-        user_count = db.scalar(
-            select(func.count()).select_from(AdvertiserUser).where(AdvertiserUser.advertiser_id == adv.id)
-        )
+    for user in users:
+        if kyc_status and user.kyc_status != kyc_status:
+            continue
+        adv = user.advertiser
         campaign_count = db.scalar(
-            select(func.count()).select_from(Campaign).where(Campaign.advertiser_id == adv.id)
+            select(func.count()).select_from(Campaign).where(Campaign.advertiser_id == user.advertiser_id)
         )
         out.append(
             {
-                "id": adv.id,
-                "name": adv.name,
-                "wallet_balance": Decimal(str(adv.wallet_balance)),
-                "user_count": int(user_count or 0),
+                "id": user.advertiser_id,
+                "user_id": user.id,
+                "email": user.email,
+                "name": adv.name if adv else (user.business_name or ""),
+                "business_name": user.business_name or (adv.name if adv else ""),
+                "phone_number": user.phone_number,
+                "website_url": user.website_url,
+                "kyc_status": user.kyc_status,
+                "wallet_balance": Decimal(str(adv.wallet_balance)) if adv else Decimal("0"),
                 "campaign_count": int(campaign_count or 0),
             }
         )
@@ -56,34 +72,18 @@ def list_advertisers(db: Session) -> list[dict]:
 
 
 def list_publishers(db: Session) -> list[dict]:
-    """Voice/dashboard tenants treated as publishers (no separate publisher entity)."""
-    tenants = db.scalars(select(Tenant).order_by(Tenant.created_at.desc())).all()
-    out: list[dict] = []
-    for tenant in tenants:
-        user_count = db.scalar(select(func.count()).select_from(User).where(User.tenant_id == tenant.id))
-        out.append(
-            {
-                "id": tenant.id,
-                "business_name": tenant.business_name or tenant.name,
-                "activation_status": tenant.activation_status,
-                "agent_status": tenant.agent_status,
-                "user_count": int(user_count or 0),
-                "phone_number": tenant.phone_number,
-            }
-        )
-    return out
+    return publisher_service.list_publishers_for_admin(db)
 
 
-def list_campaigns_for_review(db: Session) -> list[dict]:
-    campaigns = (
-        db.scalars(
-            select(Campaign)
-            .options(joinedload(Campaign.advertiser))
-            .order_by(Campaign.status, Campaign.brand_name)
-        )
-        .unique()
-        .all()
-    )
+def list_campaigns_for_review(db: Session, *, status: str | None = None) -> list[dict]:
+    ensure_review_processed(db)
+    q = select(Campaign).options(joinedload(Campaign.advertiser)).order_by(Campaign.created_at.desc())
+    if status:
+        if status == PENDING_REVIEW_STATUS:
+            q = q.where(Campaign.status.in_(_PENDING_STATUSES))
+        else:
+            q = q.where(Campaign.status == status)
+    campaigns = db.scalars(q).unique().all()
     ids = [c.id for c in campaigns]
     click_rows = (
         db.execute(
@@ -108,6 +108,8 @@ def list_campaigns_for_review(db: Session) -> list[dict]:
                 "max_cpc": Decimal(str(c.max_cpc)),
                 "daily_budget": Decimal(str(c.daily_budget)),
                 "clicks": clicks_map.get(c.id, 0),
+                "review_ends_at": c.review_ends_at,
+                "created_at": c.created_at,
             }
         )
     return out
@@ -131,3 +133,41 @@ def reject_campaign(db: Session, *, campaign_id: str) -> Campaign | None:
     db.commit()
     db.refresh(campaign)
     return campaign
+
+
+def patch_campaign_status(db: Session, *, campaign_id: str, status: str) -> Campaign | None:
+    campaign = db.get(Campaign, campaign_id)
+    if campaign is None:
+        return None
+    campaign.status = status
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def approve_advertiser_kyc(db: Session, *, advertiser_id: str) -> AdvertiserUser | None:
+    user = db.scalar(select(AdvertiserUser).where(AdvertiserUser.advertiser_id == advertiser_id).limit(1))
+    if user is None:
+        return None
+    user.kyc_status = "approved"
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def reject_advertiser_kyc(db: Session, *, advertiser_id: str) -> AdvertiserUser | None:
+    user = db.scalar(select(AdvertiserUser).where(AdvertiserUser.advertiser_id == advertiser_id).limit(1))
+    if user is None:
+        return None
+    user.kyc_status = "rejected"
+    db.execute(
+        update(Campaign)
+        .where(
+            Campaign.advertiser_id == advertiser_id,
+            Campaign.status.in_(_PENDING_STATUSES),
+        )
+        .values(status="rejected")
+    )
+    db.commit()
+    db.refresh(user)
+    return user

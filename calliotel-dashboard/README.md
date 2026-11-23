@@ -64,7 +64,7 @@ curl -s -X POST http://localhost:8000/api/v1/auth/forgot-password \
 
 See [docs/deployment-caddy.md](docs/deployment-caddy.md) for `app.calliotel.ai` on the same droplet as the voice agent (Caddy TLS stub).
 
-Set `ADMIN_*` environment variables in production for the owner console at `/admin` (not linked from marketing pages).
+Set `ADMIN_SECRET`, optional `ADMIN_EMAILS`, and `ADMIN_JWT_EXPIRE_MINUTES` for the owner console at `/admin` (not linked from marketing pages). After deploy, run Alembic through revision `010_kyc_review` so advertiser KYC columns and campaign `review_ends_at` exist.
 
 ## Phase 4 — phone picker + activate
 
@@ -99,7 +99,7 @@ Test flow:
 ```bash
 ADV_TOKEN=$(curl -s -X POST http://localhost:8000/api/v1/advertisers/register \
   -H 'Content-Type: application/json' \
-  -d '{"email":"ads@example.com","password":"testpass123","business_name":"Demo Ads Co"}' \
+  -d '{"email":"ads@example.com","password":"testpass123","business_name":"Demo Ads Co","phone_number":"+971501234567","website_url":"https://example.com"}' \
   | jq -r .access_token)
 
 curl -s http://localhost:8000/api/v1/advertisers/me -H "Authorization: Bearer $ADV_TOKEN" | jq
@@ -118,6 +118,8 @@ curl -s 'http://localhost:8000/api/v1/internal/ads/match?q=airport+car+rental&co
 ```
 
 Campaign `target_countries` / `target_languages` use ISO-style codes; empty lists mean no restriction on that dimension. The match API applies the same rule when `country` / `language` query params are set.
+
+New campaigns start in **`pending_review`** with a 48-hour window (`review_ends_at`). Only **`active`** campaigns are returned by the matcher. After 48 hours, eligible advertisers (KYC not rejected) auto-activate; admins can **Approve now** or **Reject** under `/admin` → **KYC & review**. Signup collects business name, phone, and website for lightweight KYC (no Stripe).
 
 ## Publisher portal (AdsFind)
 

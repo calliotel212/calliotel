@@ -10,12 +10,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.ads import AdEvent, Campaign, Publisher, PublisherEvent
+from app.services.campaign_review_service import ensure_review_processed
 from app.services.publisher_service import publisher_earnings_for_event
 
-# Forward-compatible with admin campaign approval (PR #6): only active campaigns serve.
-SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
-
-# Only admin-approved campaigns may serve in voice/AdsFind matching.
+# Only live (post-review) campaigns serve in voice/AdsFind matching.
 SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -82,6 +80,8 @@ def find_sponsored_ad(
     query = user_query.strip()
     if not query:
         return None
+
+    ensure_review_processed(db)
 
     campaigns = db.scalars(
         select(Campaign).where(Campaign.status.in_(SERVABLE_CAMPAIGN_STATUSES))

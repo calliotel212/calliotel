@@ -41,6 +41,8 @@ export default function AdvertisePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -53,7 +55,13 @@ export default function AdvertisePage() {
         tab === "signup" ? "/api/v1/advertisers/register" : "/api/v1/advertisers/login";
       const body =
         tab === "signup"
-          ? { email, password, business_name: businessName || undefined }
+          ? {
+              email,
+              password,
+              business_name: businessName,
+              phone_number: phoneNumber,
+              website_url: websiteUrl,
+            }
           : { email, password };
       const data = await apiPost<{ access_token: string }>(path, body);
       saveAdvertiserAccessToken(data.access_token);
@@ -97,19 +105,50 @@ export default function AdvertisePage() {
 
         <form className="mt-6 space-y-4 rounded-xl border border-slate-700 bg-ads-slate p-6" onSubmit={onSubmit}>
           {tab === "signup" ? (
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-300" htmlFor="business">
-                Business name
-              </label>
-              <input
-                id="business"
-                type="text"
-                className="w-full rounded-lg border border-slate-600 bg-ads-navy px-3 py-2 text-sm text-white focus:border-ads-teal focus:outline-none focus:ring-1 focus:ring-ads-teal"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                placeholder="Acme Plumbing"
-              />
-            </div>
+            <>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300" htmlFor="business">
+                  Business name
+                </label>
+                <input
+                  id="business"
+                  type="text"
+                  required
+                  className="w-full rounded-lg border border-slate-600 bg-ads-navy px-3 py-2 text-sm text-white focus:border-ads-teal focus:outline-none focus:ring-1 focus:ring-ads-teal"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Acme Plumbing"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300" htmlFor="phone">
+                  Business phone
+                </label>
+                <input
+                  id="phone"
+                  type="tel"
+                  required
+                  className="w-full rounded-lg border border-slate-600 bg-ads-navy px-3 py-2 text-sm text-white focus:border-ads-teal focus:outline-none focus:ring-1 focus:ring-ads-teal"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="+971 50 123 4567"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-300" htmlFor="website">
+                  Website
+                </label>
+                <input
+                  id="website"
+                  type="url"
+                  required
+                  className="w-full rounded-lg border border-slate-600 bg-ads-navy px-3 py-2 text-sm text-white focus:border-ads-teal focus:outline-none focus:ring-1 focus:ring-ads-teal"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://example.com"
+                />
+              </div>
+            </>
           ) : null}
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-300" htmlFor="email">

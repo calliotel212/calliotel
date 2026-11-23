@@ -25,6 +25,11 @@ class AdvertiserUser(Base):
     advertiser_id: Mapped[str] = mapped_column(String(36), ForeignKey("advertisers.id"), nullable=False)
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    business_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    website_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    kyc_status: Mapped[str] = mapped_column(String(16), nullable=False, default="unverified")
+    kyc_document_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     advertiser: Mapped["Advertiser"] = relationship(back_populates="users")
@@ -45,6 +50,8 @@ class Campaign(Base):
     target_countries: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     target_languages: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    review_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     advertiser: Mapped["Advertiser"] = relationship(back_populates="campaigns")
     events: Mapped[list["AdEvent"]] = relationship(back_populates="campaign")
