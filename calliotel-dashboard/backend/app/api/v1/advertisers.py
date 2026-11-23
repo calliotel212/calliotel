@@ -29,6 +29,8 @@ def register(body: AdvertiserRegisterRequest, db: Session = Depends(get_db)) -> 
             email=body.email,
             password=body.password,
             business_name=body.business_name,
+            phone_number=body.phone_number,
+            website_url=body.website_url,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -53,7 +55,10 @@ def me(current: AdvertiserUser = Depends(get_current_advertiser_user)) -> Advert
         id=current.id,
         email=current.email,
         advertiser_id=current.advertiser_id,
-        business_name=adv.name,
+        business_name=current.business_name or adv.name,
+        phone_number=current.phone_number,
+        website_url=current.website_url,
+        kyc_status=current.kyc_status,
         wallet_balance=adv.wallet_balance,
     )
 
@@ -150,7 +155,7 @@ def patch_campaign(
     )
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
-    if body.status is not None and campaign.status in ("pending_approval", "rejected"):
+    if body.status is not None and campaign.status in ("pending_review", "pending_approval", "rejected"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Campaign must be approved before changing live status",

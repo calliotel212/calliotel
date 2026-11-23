@@ -14,7 +14,31 @@ type AdvertiserMe = {
   email: string;
   business_name: string;
   wallet_balance: string;
+  phone_number?: string | null;
+  website_url?: string | null;
+  kyc_status: string;
 };
+
+function kycBadge(status: string) {
+  const base = "rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide";
+  switch (status) {
+    case "approved":
+      return `${base} bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30`;
+    case "rejected":
+      return `${base} bg-red-500/20 text-red-300 ring-1 ring-red-500/30`;
+    case "in_review":
+      return `${base} bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30`;
+    default:
+      return `${base} bg-slate-600/40 text-slate-300 ring-1 ring-slate-500/30`;
+  }
+}
+
+function kycLabel(status: string) {
+  if (status === "approved") return "Verified";
+  if (status === "rejected") return "KYC declined";
+  if (status === "in_review") return "In review";
+  return "Unverified";
+}
 
 export function AdvertiserDashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -55,8 +79,25 @@ export function AdvertiserDashboardShell({ children }: { children: React.ReactNo
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-ads-teal">AdsFind</p>
-            <h1 className="text-lg font-semibold text-white">{me?.business_name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg font-semibold text-white">{me?.business_name}</h1>
+              {me ? (
+                <span className={kycBadge(me.kyc_status)} title="Advertiser verification">
+                  {kycLabel(me.kyc_status)}
+                </span>
+              ) : null}
+            </div>
             <p className="text-xs text-slate-400">{me?.email}</p>
+            {me?.website_url ? (
+              <a
+                href={me.website_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-ads-teal hover:underline"
+              >
+                {me.website_url.replace(/^https?:\/\//, "")}
+              </a>
+            ) : null}
           </div>
           <div className="flex items-center gap-4">
             <Link href="/advertise" className="text-sm text-slate-400 hover:text-ads-teal">

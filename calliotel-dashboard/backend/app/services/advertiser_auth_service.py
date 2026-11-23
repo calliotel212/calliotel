@@ -14,6 +14,8 @@ def register_advertiser(
     email: str,
     password: str,
     business_name: str | None = None,
+    phone_number: str | None = None,
+    website_url: str | None = None,
 ) -> AdvertiserUser:
     existing = db.query(AdvertiserUser).filter(AdvertiserUser.email == email.lower()).first()
     if existing:
@@ -26,6 +28,10 @@ def register_advertiser(
         email=email.lower(),
         password_hash=hash_password(password),
         advertiser_id=advertiser.id,
+        business_name=name,
+        phone_number=(phone_number or "").strip() or None,
+        website_url=(website_url or "").strip() or None,
+        kyc_status="unverified",
     )
     db.add(user)
     db.commit()

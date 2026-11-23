@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.ads import AdEvent, Campaign
+from app.services.campaign_review_service import PENDING_REVIEW_STATUS, review_deadline_from
 
 
 def campaign_served_counts(db: Session, *, campaign_ids: list[str]) -> dict[str, int]:
@@ -18,6 +20,9 @@ def campaign_served_counts(db: Session, *, campaign_ids: list[str]) -> dict[str,
 
 
 def list_campaigns(db: Session, *, advertiser_id: str) -> list[Campaign]:
+    from app.services.campaign_review_service import ensure_review_processed
+
+    ensure_review_processed(db)
     return (
         db.query(Campaign)
         .filter(Campaign.advertiser_id == advertiser_id)
@@ -46,8 +51,9 @@ def create_campaign(
     daily_budget: Decimal = Decimal("0"),
     target_countries: list[str] | None = None,
     target_languages: list[str] | None = None,
-    status: str = "pending_approval",
+    status: str = PENDING_REVIEW_STATUS,
 ) -> Campaign:
+    now = datetime.now(timezone.utc)
     campaign = Campaign(
         advertiser_id=advertiser_id,
         brand_name=brand_name,
@@ -59,6 +65,8 @@ def create_campaign(
         target_countries=target_countries or [],
         target_languages=target_languages or [],
         status=status,
+        created_at=now,
+        review_ends_at=review_deadline_from(now),
     )
     db.add(campaign)
     db.commit()

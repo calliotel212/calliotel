@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, EmailStr, Field
@@ -24,19 +25,24 @@ class AdminMetricsResponse(BaseModel):
 
 class AdminAdvertiserRow(BaseModel):
     id: str
+    user_id: str
+    email: str
     name: str
+    business_name: str | None = None
+    phone_number: str | None = None
+    website_url: str | None = None
+    kyc_status: str
     wallet_balance: Decimal
-    user_count: int
     campaign_count: int
 
 
 class AdminPublisherRow(BaseModel):
     id: str
-    business_name: str | None
-    activation_status: str
-    agent_status: str
+    name: str
+    pending_balance: Decimal
+    paid_balance: Decimal
     user_count: int
-    phone_number: str | None
+    impressions: int
 
 
 class AdminCampaignRow(BaseModel):
@@ -48,8 +54,19 @@ class AdminCampaignRow(BaseModel):
     max_cpc: Decimal
     daily_budget: Decimal
     clicks: int
+    review_ends_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 class CampaignApprovalResponse(BaseModel):
     id: str
     status: str
+
+
+class AdvertiserKycResponse(BaseModel):
+    advertiser_id: str
+    kyc_status: str
+
+
+class CampaignPatchRequest(BaseModel):
+    status: str = Field(pattern="^(active|paused|rejected|pending_review)$")

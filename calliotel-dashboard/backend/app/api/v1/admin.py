@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.admin_deps import require_admin
@@ -12,7 +12,9 @@ from app.schemas.admin import (
     AdminMetricsResponse,
     AdminPublisherRow,
     AdminTokenResponse,
+    AdvertiserKycResponse,
     CampaignApprovalResponse,
+    CampaignPatchRequest,
 )
 from app.services import admin_service
 
@@ -65,8 +67,9 @@ def admin_metrics(
 def admin_advertisers(
     _: dict = Depends(require_admin),
     db: Session = Depends(get_db),
+    kyc_status: str | None = Query(default=None),
 ) -> list[AdminAdvertiserRow]:
-    return [AdminAdvertiserRow.model_validate(row) for row in admin_service.list_advertisers(db)]
+    return [AdminAdvertiserRow.model_validate(row) for row in admin_service.list_advertisers(db, kyc_status=kyc_status)]
 
 
 @router.get("/publishers", response_model=list[AdminPublisherRow])
@@ -81,8 +84,49 @@ def admin_publishers(
 def admin_campaigns(
     _: dict = Depends(require_admin),
     db: Session = Depends(get_db),
+    status: str | None = Query(default=None),
 ) -> list[AdminCampaignRow]:
-    return [AdminCampaignRow.model_validate(row) for row in admin_service.list_campaigns_for_review(db)]
+    return [
+        AdminCampaignRow.model_validate(row)
+        for row in admin_service.list_campaigns_for_review(db, status=status)
+    ]
+
+
+@router.post("/advertisers/{advertiser_id}/kyc/approve", response_model=AdvertiserKycResponse)
+def approve_advertiser_kyc(
+    advertiser_id: str,
+    _: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> AdvertiserKycResponse:
+    user = admin_service.approve_advertiser_kyc(db, advertiser_id=advertiser_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Advertiser not found")
+    return AdvertiserKycResponse(advertiser_id=advertiser_id, kyc_status=user.kyc_status)
+
+
+@router.post("/advertisers/{advertiser_id}/kyc/reject", response_model=AdvertiserKycResponse)
+def reject_advertiser_kyc(
+    advertiser_id: str,
+    _: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> AdvertiserKycResponse:
+    user = admin_service.reject_advertiser_kyc(db, advertiser_id=advertiser_id)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Advertiser not found")
+    return AdvertiserKycResponse(advertiser_id=advertiser_id, kyc_status=user.kyc_status)
+
+
+@router.patch("/campaigns/{campaign_id}", response_model=CampaignApprovalResponse)
+def patch_campaign(
+    campaign_id: str,
+    body: CampaignPatchRequest,
+    _: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> CampaignApprovalResponse:
+    campaign = admin_service.patch_campaign_status(db, campaign_id=campaign_id, status=body.status)
+    if campaign is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    return CampaignApprovalResponse(id=campaign.id, status=campaign.status)
 
 
 @router.post("/campaigns/{campaign_id}/approve", response_model=CampaignApprovalResponse)

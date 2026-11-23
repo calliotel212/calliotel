@@ -1,10 +1,39 @@
+import asyncio
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.db.session import SessionLocal
+from app.services.campaign_review_service import process_due_campaign_reviews
 
-app = FastAPI(title="Calliotel Dashboard API", version="0.1.0")
+_REVIEW_INTERVAL_SECONDS = 15 * 60
+
+
+async def _campaign_review_loop() -> None:
+    while True:
+        await asyncio.sleep(_REVIEW_INTERVAL_SECONDS)
+        db = SessionLocal()
+        try:
+            process_due_campaign_reviews(db)
+        finally:
+            db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task = asyncio.create_task(_campaign_review_loop())
+    yield
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
+
+
+app = FastAPI(title="Calliotel Dashboard API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
