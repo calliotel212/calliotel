@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 
 from app.models.ads import AdEvent, Campaign
 
+# Only admin-approved campaigns may serve in voice/AdsFind matching.
+SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
+
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _MIN_SCORE = 2
 
@@ -74,7 +77,9 @@ def find_sponsored_ad(
     if not query:
         return None
 
-    campaigns = db.scalars(select(Campaign).where(Campaign.status == "active")).all()
+    campaigns = db.scalars(
+        select(Campaign).where(Campaign.status.in_(SERVABLE_CAMPAIGN_STATUSES))
+    ).all()
     if not campaigns:
         return None
 

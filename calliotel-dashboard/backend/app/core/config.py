@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     email_from: str = "Calliotel <noreply@calliotel.ai>"
     internal_ads_api_key: str = ""
+    admin_secret: str = ""
+    admin_api_key: str = ""
+    admin_jwt_expire_minutes: int = 30
+    admin_emails: str = ""
 
 
 settings = Settings()

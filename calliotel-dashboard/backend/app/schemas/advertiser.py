@@ -49,7 +49,6 @@ class CampaignCreateRequest(BaseModel):
     daily_budget: Decimal = Field(default=Decimal("0"), ge=0, max_digits=12, decimal_places=4)
     target_countries: list[str] = Field(default_factory=list)
     target_languages: list[str] = Field(default_factory=list)
-    status: str = Field(default="active", pattern="^(active|paused)$")
 
 
 class CampaignUpdateRequest(BaseModel):

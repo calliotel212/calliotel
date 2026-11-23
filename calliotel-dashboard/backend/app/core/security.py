@@ -71,3 +71,25 @@ def generate_reset_token() -> str:
     import secrets
 
     return secrets.token_urlsafe(32)
+
+
+def create_admin_access_token(*, email: str | None = None) -> str:
+    expire = datetime.now(UTC) + timedelta(minutes=settings.admin_jwt_expire_minutes)
+    payload: dict[str, Any] = {
+        "sub": "admin",
+        "exp": expire,
+        "type": "admin",
+    }
+    if email:
+        payload["email"] = email
+    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+
+
+def decode_admin_access_token(token: str) -> dict[str, Any]:
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+    except JWTError as exc:
+        raise ValueError("Invalid token") from exc
+    if payload.get("type") != "admin":
+        raise ValueError("Invalid token type")
+    return payload
