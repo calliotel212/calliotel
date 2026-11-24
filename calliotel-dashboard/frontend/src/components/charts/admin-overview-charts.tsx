@@ -1,5 +1,6 @@
 "use client";
 
+import { GaugeRing } from "@/components/charts/gauge-ring";
 import {
   Area,
   AreaChart,
@@ -23,6 +24,16 @@ function buildRevenueSeries(totalUsd: number): RevenuePoint[] {
 }
 
 type HealthPoint = { name: string; value: number };
+
+export function platformHealthComposite(metrics: {
+  valid_clicks: number;
+  blocked_fraud_clicks: number;
+  total_served: number;
+  total_clicks: number;
+}): number {
+  const series = buildHealthSeries(metrics);
+  return Math.round(series.reduce((sum, p) => sum + p.value, 0) / series.length);
+}
 
 function buildHealthSeries(metrics: {
   valid_clicks: number;
@@ -55,10 +66,28 @@ export function AdminOverviewCharts({ metrics }: { metrics: Metrics }) {
   const total = Number(metrics.total_revenue_usd) || 0;
   const revenueData = buildRevenueSeries(total);
   const healthData = buildHealthSeries(metrics);
+  const compositeHealth = platformHealthComposite(metrics);
 
   return (
-    <div className="mb-8 grid gap-4 lg:grid-cols-2">
-      <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-5 shadow-lg shadow-black/20 backdrop-blur-md">
+  <div className="mb-8 space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <GaugeRing
+          value={compositeHealth}
+          label="Platform health"
+          sublabel="composite"
+          detail="Delivery, clicks, shield, and uptime blended score"
+          size="md"
+          className="sm:col-span-2 lg:col-span-1"
+        />
+        <div className="glass-panel hidden items-center justify-center p-5 sm:col-span-2 lg:col-span-3 lg:flex">
+          <p className="max-w-xl text-sm leading-relaxed text-slate-400">
+            Live operational view across revenue trend and subsystem health. Teal gauges reflect
+            intelligence-style metrics for quick at-a-glance ops review.
+          </p>
+        </div>
+      </div>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <div className="glass-panel p-5">
         <h3 className="text-sm font-semibold text-white">Total revenue (7d trend)</h3>
         <p className="mt-1 text-xs text-slate-500">Estimated from platform metrics</p>
         <div className="mt-4 h-52 w-full">
@@ -93,7 +122,7 @@ export function AdminOverviewCharts({ metrics }: { metrics: Metrics }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-700/80 bg-slate-900/40 p-5 shadow-lg shadow-black/20 backdrop-blur-md">
+      <div className="glass-panel p-5">
         <h3 className="text-sm font-semibold text-white">Platform health</h3>
         <p className="mt-1 text-xs text-slate-500">Delivery, clicks, fraud shield, uptime</p>
         <div className="mt-4 h-52 w-full">
@@ -115,6 +144,7 @@ export function AdminOverviewCharts({ metrics }: { metrics: Metrics }) {
           </ResponsiveContainer>
         </div>
       </div>
+    </div>
     </div>
   );
 }
