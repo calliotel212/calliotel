@@ -5,3 +5,9 @@
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
 }
+
+@layer utilities {
+  .glass-panel {
+    @apply rounded-xl border border-slate-700/80 bg-slate-900/40 shadow-lg shadow-black/20 backdrop-blur-md;
+  }
+}

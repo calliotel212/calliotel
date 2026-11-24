@@ -7,6 +7,7 @@ import {
   getAdminAccessToken,
   setAdminAccessToken,
 } from "@/lib/admin-auth";
+import { AdminOverviewCharts } from "@/components/charts/admin-overview-charts";
 
 type Tab = "overview" | "kyc" | "campaigns" | "publishers";
 
@@ -258,11 +259,11 @@ export default function AdminPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
-      <header className="border-b border-slate-800 bg-slate-900/80">
+    <main className="min-h-screen bg-ads-navy text-slate-100">
+      <header className="border-b border-slate-800 bg-ads-slate/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-4 py-5 sm:px-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-teal-400">AdsFind ops</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-ads-teal">AdsFind ops</p>
             <h1 className="text-2xl font-bold text-white">Admin console</h1>
           </div>
           <button
@@ -281,7 +282,7 @@ export default function AdminPage() {
               onClick={() => setTab(t.id)}
               className={`relative whitespace-nowrap border-b-2 px-4 py-3 text-sm font-medium transition ${
                 tab === t.id
-                  ? "border-teal-400 text-white"
+                  ? "border-ads-teal text-white"
                   : "border-transparent text-slate-500 hover:text-slate-200"
               }`}
             >
@@ -304,18 +305,21 @@ export default function AdminPage() {
         ) : null}
 
         {tab === "overview" && metrics ? (
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <StatCard label="Est. revenue" value={`$${Number(metrics.total_revenue_usd).toFixed(2)}`} />
-            <StatCard label="Served events" value={metrics.total_served.toLocaleString()} />
-            <StatCard label="Valid clicks" value={metrics.valid_clicks.toLocaleString()} />
-            <StatCard
-              label="Blocked fraud clicks"
-              value={metrics.blocked_fraud_clicks.toLocaleString()}
-              highlight
-            />
-            <StatCard label="Advertisers" value={String(advertisers.length)} />
-            <StatCard label="Pending reviews" value={String(pendingCampaigns.length)} />
-          </section>
+          <>
+            <AdminOverviewCharts metrics={metrics} />
+            <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              <StatCard label="Est. revenue" value={`$${Number(metrics.total_revenue_usd).toFixed(2)}`} />
+              <StatCard label="Served events" value={metrics.total_served.toLocaleString()} />
+              <StatCard label="Valid clicks" value={metrics.valid_clicks.toLocaleString()} />
+              <StatCard
+                label="Blocked fraud clicks"
+                value={metrics.blocked_fraud_clicks.toLocaleString()}
+                highlight
+              />
+              <StatCard label="Advertisers" value={String(advertisers.length)} />
+              <StatCard label="Pending reviews" value={String(pendingCampaigns.length)} />
+            </section>
+          </>
         ) : null}
 
         {tab === "kyc" ? (
@@ -528,10 +532,8 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-xl border p-6 ${
-        highlight
-          ? "border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-slate-900"
-          : "border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950"
+      className={`glass-panel p-6 ${
+        highlight ? "border-amber-500/30 bg-gradient-to-br from-amber-950/40 to-slate-900/60" : ""
       }`}
     >
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">{label}</p>
@@ -550,7 +552,7 @@ function DataTable({
   empty: string;
 }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/60">
+    <div className="glass-panel overflow-x-auto">
       <table className="min-w-full text-left text-sm">
         <thead className="border-b border-slate-800 bg-slate-900/80 text-xs uppercase text-slate-500">
           <tr>

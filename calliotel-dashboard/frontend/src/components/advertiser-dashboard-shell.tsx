@@ -75,7 +75,7 @@ export function AdvertiserDashboardShell({ children }: { children: React.ReactNo
 
   return (
     <div className="min-h-screen bg-ads-navy text-slate-100">
-      <header className="border-b border-slate-700/80 bg-ads-slate">
+      <header className="border-b border-slate-700/80 bg-ads-slate/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 md:px-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-ads-teal">AdsFind</p>

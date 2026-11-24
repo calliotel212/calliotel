@@ -24,7 +24,7 @@ export function CampaignTable({
   return (
     <div
       className={`overflow-x-auto rounded-xl border ${
-        dark ? "border-slate-700" : "border-slate-200 bg-white shadow-sm"
+        dark ? "glass-panel border-slate-700/80" : "border-slate-200 bg-white shadow-sm"
       }`}
     >
       <table className="min-w-full text-left text-sm">
@@ -58,7 +58,11 @@ export function CampaignTable({
             campaigns.map((c) => (
               <tr
                 key={c.id}
-                className={dark ? "border-t border-slate-800" : "border-t border-slate-100"}
+                className={
+                  dark
+                    ? "border-t border-slate-800/80 transition hover:bg-slate-800/30"
+                    : "border-t border-slate-100 hover:bg-slate-50"
+                }
               >
                 <td className={`px-4 py-3 font-medium ${dark ? "text-white" : "text-slate-900"}`}>
                   {c.brand_name}
@@ -108,10 +112,10 @@ function CampaignStatusCell({
     return (
       <hgroup className="space-y-1">
         <span
-          className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+          className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
             c.status === "rejected"
-              ? "bg-red-900/40 text-red-200"
-              : "bg-amber-900/40 text-amber-200"
+              ? "bg-red-500/15 text-red-300 ring-red-500/40"
+              : "bg-amber-500/15 text-amber-200 ring-amber-500/40"
           }`}
         >
           {statusLabel(c.status)}
@@ -123,19 +127,11 @@ function CampaignStatusCell({
     );
   }
 
+  const badgeClass = statusBadgeClass(c.status, dark);
+
   if (!onToggle) {
     return (
-      <span
-        className={`rounded-full px-3 py-1 text-xs font-medium ${
-          c.status === "active"
-            ? dark
-              ? "bg-teal-900/50 text-ads-teal"
-              : "bg-emerald-100 text-emerald-800"
-            : dark
-              ? "bg-slate-800 text-slate-400"
-              : "bg-slate-100 text-slate-600"
-        }`}
-      >
+      <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${badgeClass}`}>
         {statusLabel(c.status)}
       </span>
     );
@@ -147,15 +143,27 @@ function CampaignStatusCell({
       role="switch"
       aria-checked={c.status === "active"}
       onClick={() => onToggle(c)}
-      className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-        c.status === "active"
-          ? "bg-teal-900/50 text-ads-teal hover:bg-teal-900/70"
-          : dark
-            ? "bg-slate-800 text-slate-400 hover:bg-slate-700"
-            : "bg-slate-200 text-slate-600 hover:bg-slate-300"
+      className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 transition ${badgeClass} ${
+        c.status === "active" ? "hover:brightness-110" : "hover:opacity-90"
       }`}
     >
       {statusLabel(c.status)}
     </button>
   );
+}
+
+function statusBadgeClass(status: string, dark: boolean): string {
+  if (status === "active") {
+    return "bg-emerald-500/15 text-emerald-300 ring-emerald-500/40";
+  }
+  if (status === "paused") {
+    return "bg-red-500/15 text-red-300 ring-red-500/40";
+  }
+  if (status === "pending_review" || status === "pending_approval") {
+    return "bg-amber-500/15 text-amber-200 ring-amber-500/40";
+  }
+  if (status === "rejected") {
+    return "bg-red-500/15 text-red-300 ring-red-500/40";
+  }
+  return dark ? "bg-slate-800 text-slate-400 ring-slate-600/40" : "bg-slate-100 text-slate-600 ring-slate-200";
 }
