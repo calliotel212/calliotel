@@ -26,7 +26,7 @@ SERVABLE_CAMPAIGN_STATUSES = frozenset({"active"})
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _KEYWORD_MIN_SCORE = 2
-_SEMANTIC_MIN_SCORE = 6
+_SEMANTIC_MIN_SCORE = 4
 _LLM_TIMEOUT_SECONDS = 2.0
 
 def _tokenize(text: str) -> set[str]:
@@ -98,8 +98,12 @@ async def _semantic_match_async(
     system = (
         "You rank sponsored ad campaigns for relevance to a user query. "
         "Output valid JSON only with keys: campaign_id (string or null), match_score (integer 1-10). "
-        "Pick the single best campaign_id from the list, or null if none are relevant (score below 6). "
-        "match_score is relevance of the best pick only."
+        "Pick the single best campaign_id from the list, or null only if none are relevant (score below 4). "
+        "match_score is relevance of the best pick only. "
+        "Mapping hints for demo campaigns: "
+        "If the user asks for a vehicle, car, ride, drive, or transport, prefer the Car Rental campaign. "
+        "If they ask to sleep, stay, rest, or lodging tonight, prefer the Hotel campaign. "
+        "If they want flowers, a gift, or a present, prefer the Flower Shop campaign."
     )
     user_content = json.dumps(
         {"user_query": user_query, "campaigns": catalog},
@@ -126,6 +130,8 @@ async def _semantic_match_async(
     except (httpx.HTTPError, asyncio.TimeoutError, KeyError, json.JSONDecodeError, ValueError) as exc:
         logger.debug("Semantic ad match LLM failed: %s", exc)
         return None
+
+    logger.info("DeepSeek match result: %s", parsed)
 
     campaign_id = parsed.get("campaign_id")
     if campaign_id in (None, "", "null"):
