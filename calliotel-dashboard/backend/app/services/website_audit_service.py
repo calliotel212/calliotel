@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-from app.schemas.audit import WebsiteAuditResponse
+from app.schemas.audit import SeoHealth, TrafficEstimate, WebsiteAuditResponse
 from app.services.llm_client import llm_model_for_provider, resolve_llm_provider
 
 SCRAPE_TIMEOUT = 10.0
@@ -28,6 +28,18 @@ _PRIVATE_NETS = (
     re.compile(r"^0\."),
     re.compile(r"^localhost$", re.I),
     re.compile(r"\.local$", re.I),
+)
+
+_LLM_SYSTEM = (
+    "You are a Senior Digital Marketing & SEO Director at an enterprise intelligence firm. "
+    "Given scraped website data, return ONLY strict JSON (no markdown) with exactly these keys:\n"
+    '- "overall_score": integer 1-100\n'
+    '- "traffic_estimate": object with "level" (Low|Medium|High) and "reason" (string)\n'
+    '- "seo_health": object with "score" (1-100), "issues" (array of strings), "quick_wins" (array of strings)\n'
+    '- "competitor_insights": array of strings (each a distinct insight, not one paragraph)\n'
+    '- "ai_ad_recommendations": array of strings\n'
+    '- "missing_keywords": array of strings\n'
+    "Be specific to the business, geography, and SERP competition."
 )
 
 
@@ -178,17 +190,61 @@ def _industry_from_context(url: str, text: str) -> str:
     return "general"
 
 
-def _mock_insights(
-    url: str,
-    scrape: ScrapeResult,
-    *,
-    site_score: int,
-) -> tuple[str, list[str], list[str]]:
+def _traffic_level(overall: int, content_len: int) -> TrafficEstimate:
+    if overall >= 70 and content_len >= 400:
+        return TrafficEstimate(
+            level="High",
+            reason="Strong technical foundation and substantive on-page content suggest headroom for branded and mid-funnel queries.",
+        )
+    if overall >= 45:
+        return TrafficEstimate(
+            level="Medium",
+            reason="Baseline discoverability is present; expanding keyword coverage and trust signals should lift impressions.",
+        )
+    return TrafficEstimate(
+        level="Low",
+        reason="Thin or slow pages plus weak metadata typically cap organic reach until core SEO fixes ship.",
+    )
+
+
+def _seo_health_from_scrape(scrape: ScrapeResult, overall: int) -> SeoHealth:
+    issues: list[str] = []
+    quick_wins: list[str] = []
+    if not scrape.ssl_valid:
+        issues.append("HTTPS / SSL not fully trusted")
+        quick_wins.append("Force HTTPS and renew TLS certificate")
+    if not scrape.title:
+        issues.append("Missing or empty <title> tag")
+        quick_wins.append("Add a keyword-rich title under 60 characters")
+    if not scrape.meta_description:
+        issues.append("No meta description")
+        quick_wins.append("Write a compelling meta description with primary intent phrase")
+    if not scrape.h1s:
+        issues.append("No H1 heading detected")
+        quick_wins.append("Add one clear H1 that states your core offer")
+    if scrape.response_time_ms > 3000:
+        issues.append(f"Slow TTFB ({scrape.response_time_ms} ms)")
+        quick_wins.append("Compress images and enable CDN caching")
+    if len(scrape.text_snippet) < 200:
+        issues.append("Thin body copy for crawlers")
+        quick_wins.append("Expand above-the-fold copy with FAQs and local modifiers")
+    if not issues:
+        issues.append("Monitor Core Web Vitals on mobile")
+    if not quick_wins:
+        quick_wins.append("Add FAQ schema for AI search surfaces")
+    seo_score = max(1, min(100, overall - (5 if scrape.error else 0)))
+    return SeoHealth(score=seo_score, issues=issues[:8], quick_wins=quick_wins[:8])
+
+
+def _competitor_bullets(long_text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", long_text.strip())
+    bullets = [p.strip() for p in parts if len(p.strip()) > 20]
+    return bullets[:6] if bullets else [long_text.strip() or "Category leaders invest in local trust and fast mobile UX."]
+
+
+def _mock_report(url: str, scrape: ScrapeResult, overall_score: int) -> dict[str, Any]:
     industry = _industry_from_context(url, scrape.text_snippet)
     host = urlparse(scrape.final_url).hostname or "your site"
-    keywords_found = set(_hostname_keywords(url))
-    for word in re.findall(r"[a-z]{4,}", scrape.text_snippet.lower())[:80]:
-        keywords_found.add(word)
 
     templates: dict[str, dict[str, Any]] = {
         "car_rental": {
@@ -199,11 +255,11 @@ def _mock_insights(
                 "same-day booking",
                 "fleet size",
             ],
-            "competitors": (
-                f"Competitors in the {host} niche often rank for “airport transfer”, "
-                "unlimited mileage, and Arabic/English landing pages. Top listings emphasize "
-                "instant WhatsApp quotes and Google Maps embeds on the homepage."
-            ),
+            "competitors": [
+                f"Rivals serving {host} rank for airport transfer and unlimited mileage intents.",
+                "Top listings pair WhatsApp quotes with embedded Google Maps on the homepage.",
+                "Aggregator sites capture price-shoppers; direct sites win on deposit transparency.",
+            ],
             "ads": [
                 "Target voice queries like “rent a car near the airport today”.",
                 "Lead with daily rate + deposit in the first line of ad copy.",
@@ -218,11 +274,11 @@ def _mock_insights(
                 "neighborhood service area",
                 "Arabic meta description",
             ],
-            "competitors": (
-                "Local Lebanese advertisers win on trust signals: Lebanese phone numbers, "
-                ".lb domain or clear Beirut address, and bilingual (AR/EN) hero copy. "
-                "Competitors also run AI-voice placements for “near me” intents."
-            ),
+            "competitors": [
+                "Lebanese advertisers win on trust: local numbers, Beirut address, bilingual hero copy.",
+                "Competitors run AI-voice placements for “near me” and district-specific intents.",
+                ".lb domains and Arabic snippets improve CTR on mobile SERPs.",
+            ],
             "ads": [
                 "Use country target LB and language ar,en on AdsFind campaigns.",
                 "Highlight fast response and cash/card options in sponsored snippets.",
@@ -231,10 +287,10 @@ def _mock_insights(
         },
         "hospitality": {
             "missing": ["free cancellation", "breakfast included", "sea view", "check-in time"],
-            "competitors": (
-                "Hospitality peers optimize for seasonal offers and OTA price-match language. "
-                "Strong sites surface reviews, direct-booking discounts, and mobile-first photos."
-            ),
+            "competitors": [
+                "Peers optimize seasonal offers and OTA price-match language.",
+                "Strong sites surface reviews, direct-booking discounts, and mobile-first photos.",
+            ],
             "ads": [
                 "Promote direct-booking savings vs. aggregators in ad copy.",
                 "Target weekend getaways and business-travel intents separately.",
@@ -242,10 +298,10 @@ def _mock_insights(
         },
         "home_services": {
             "missing": ["24/7 emergency", "licensed & insured", "service area map", "flat-rate pricing"],
-            "competitors": (
-                "Home-service leaders use click-to-call, same-day slots, and before/after proof. "
-                "They capture “emergency” long-tail keywords competitors miss."
-            ),
+            "competitors": [
+                "Home-service leaders use click-to-call and same-day slots.",
+                "They capture “emergency” long-tail keywords competitors miss.",
+            ],
             "ads": [
                 "Bid higher on urgent-intent phrases (leak, AC down, no hot water).",
                 "Show response-time SLA in the sponsored blurb.",
@@ -258,11 +314,10 @@ def _mock_insights(
                 "trust badges",
                 "localized keywords",
             ],
-            "competitors": (
-                f"Sites like {host} compete on clarity: a strong H1, meta description, and "
-                "HTTPS are table stakes. Category leaders add FAQ schema and FAQ-style ad copy "
-                "for AI assistants."
-            ),
+            "competitors": [
+                f"Sites like {host} compete on clarity: H1, meta, and HTTPS are table stakes.",
+                "Category leaders add FAQ schema and AI-assistant-friendly Q&A blocks.",
+            ],
             "ads": [
                 "Mirror your best H1 as the brand line in AdsFind.",
                 "Test intent-led copy vs. brand-led copy on voice placements.",
@@ -270,13 +325,71 @@ def _mock_insights(
         },
     }
     pack = templates.get(industry, templates["general"])
-    missing = [k for k in pack["missing"] if k.lower() not in scrape.text_snippet.lower()]
-    if site_score < 50:
+    text_lower = scrape.text_snippet.lower()
+    missing = [k for k in pack["missing"] if k.lower() not in text_lower]
+    if overall_score < 50:
         missing = missing + ["improve page speed", "fix SSL / HTTPS"][:2]
-    return pack["competitors"], missing[:8], pack["ads"]
+
+    content_len = len(scrape.text_snippet)
+    return {
+        "overall_score": overall_score,
+        "traffic_estimate": _traffic_level(overall_score, content_len).model_dump(),
+        "seo_health": _seo_health_from_scrape(scrape, overall_score).model_dump(),
+        "competitor_insights": pack["competitors"],
+        "ai_ad_recommendations": pack["ads"],
+        "missing_keywords": missing[:8],
+    }
 
 
-def _fetch_llm_insights(url: str, scrape: ScrapeResult) -> tuple[str, list[str], list[str]] | None:
+def _parse_llm_payload(parsed: dict[str, Any], fallback_overall: int) -> dict[str, Any] | None:
+    try:
+        overall = int(parsed.get("overall_score", fallback_overall))
+        overall = max(1, min(100, overall))
+    except (TypeError, ValueError):
+        overall = fallback_overall
+
+    te = parsed.get("traffic_estimate") or {}
+    if isinstance(te, str):
+        traffic = TrafficEstimate(level="Medium", reason=te)
+    else:
+        level = te.get("level", "Medium")
+        if level not in ("Low", "Medium", "High"):
+            level = "Medium"
+        traffic = TrafficEstimate(level=level, reason=str(te.get("reason", "Estimated from page signals.")))
+
+    sh = parsed.get("seo_health") or {}
+    try:
+        seo_score = int(sh.get("score", overall))
+        seo_score = max(1, min(100, seo_score))
+    except (TypeError, ValueError):
+        seo_score = overall
+    seo = SeoHealth(
+        score=seo_score,
+        issues=[str(x) for x in sh.get("issues", [])][:12],
+        quick_wins=[str(x) for x in sh.get("quick_wins", [])][:12],
+    )
+
+    raw_ci = parsed.get("competitor_insights", [])
+    if isinstance(raw_ci, str):
+        competitor_insights = _competitor_bullets(raw_ci)
+    else:
+        competitor_insights = [str(x) for x in raw_ci][:12]
+
+    ads_key = "ai_ad_recommendations" if "ai_ad_recommendations" in parsed else "ad_recommendations"
+    ai_ads = [str(x) for x in parsed.get(ads_key, [])][:12]
+    missing = [str(x) for x in parsed.get("missing_keywords", [])][:12]
+
+    return {
+        "overall_score": overall,
+        "traffic_estimate": traffic.model_dump(),
+        "seo_health": seo.model_dump(),
+        "competitor_insights": competitor_insights,
+        "ai_ad_recommendations": ai_ads,
+        "missing_keywords": missing,
+    }
+
+
+def _fetch_llm_report(url: str, scrape: ScrapeResult, *, fallback_overall: int) -> dict[str, Any] | None:
     provider_info = resolve_llm_provider()
     if not provider_info:
         return None
@@ -285,9 +398,6 @@ def _fetch_llm_insights(url: str, scrape: ScrapeResult) -> tuple[str, list[str],
     prompt = {
         "role": "user",
         "content": (
-            "You are an AdsFind marketing analyst. Given scraped website data, return ONLY JSON "
-            'with keys: competitor_insights (string), missing_keywords (array of strings), '
-            "ad_recommendations (array of strings). Be specific to the business and geography.\n\n"
             f"URL: {url}\n"
             f"Title: {scrape.title}\n"
             f"Meta: {scrape.meta_description}\n"
@@ -302,8 +412,8 @@ def _fetch_llm_insights(url: str, scrape: ScrapeResult) -> tuple[str, list[str],
                 headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                 json={
                     "model": model,
-                    "messages": [{"role": "system", "content": "Output valid JSON only."}, prompt],
-                    "temperature": 0.4,
+                    "messages": [{"role": "system", "content": _LLM_SYSTEM}, prompt],
+                    "temperature": 0.35,
                     "response_format": {"type": "json_object"},
                 },
             )
@@ -311,20 +421,48 @@ def _fetch_llm_insights(url: str, scrape: ScrapeResult) -> tuple[str, list[str],
         data = resp.json()
         content = data["choices"][0]["message"]["content"]
         parsed = json.loads(content)
-        return (
-            str(parsed.get("competitor_insights", "")),
-            [str(x) for x in parsed.get("missing_keywords", [])][:12],
-            [str(x) for x in parsed.get("ad_recommendations", [])][:8],
-        )
+        report = _parse_llm_payload(parsed, fallback_overall)
+        if report and report.get("ai_ad_recommendations"):
+            return report
+        return None
     except Exception:
         return None
+
+
+def _build_response(
+    scrape: ScrapeResult,
+    report: dict[str, Any],
+) -> WebsiteAuditResponse:
+    overall = int(report["overall_score"])
+    traffic = TrafficEstimate(**report["traffic_estimate"])
+    seo = SeoHealth(**report["seo_health"])
+    competitor_insights = list(report["competitor_insights"])
+    ai_ads = list(report["ai_ad_recommendations"])
+    missing = list(report["missing_keywords"])
+    legacy_summary = " ".join(competitor_insights)
+
+    return WebsiteAuditResponse(
+        website_url=scrape.final_url,
+        overall_score=overall,
+        traffic_estimate=traffic,
+        seo_health=seo,
+        competitor_insights=competitor_insights,
+        ai_ad_recommendations=ai_ads,
+        missing_keywords=missing,
+        ssl_status="Valid" if scrape.ssl_valid else "Invalid",
+        response_time_ms=scrape.response_time_ms,
+        title=scrape.title,
+        site_score=overall,
+        ad_recommendations=ai_ads,
+        competitor_insight=legacy_summary,
+    )
 
 
 def run_website_audit(website_url: str) -> WebsiteAuditResponse:
     url = normalize_website_url(website_url)
     scrape = scrape_website(url)
     content_len = len(scrape.text_snippet)
-    site_score = _compute_site_score(
+    overall_score = _compute_site_score(
         ssl_valid=scrape.ssl_valid,
         title=scrape.title,
         meta_description=scrape.meta_description,
@@ -332,23 +470,17 @@ def run_website_audit(website_url: str) -> WebsiteAuditResponse:
         content_length=content_len,
     )
     if scrape.error:
-        site_score = max(1, min(site_score, 45))
+        overall_score = max(1, min(overall_score, 45))
 
-    llm = _fetch_llm_insights(url, scrape)
-    if llm:
-        competitor_insights, missing_keywords, ad_recommendations = llm
+    llm_report = _fetch_llm_report(url, scrape, fallback_overall=overall_score)
+    if llm_report:
+        report = llm_report
     else:
-        competitor_insights, missing_keywords, ad_recommendations = _mock_insights(
-            url, scrape, site_score=site_score
-        )
+        report = _mock_report(url, scrape, overall_score)
 
-    return WebsiteAuditResponse(
-        website_url=scrape.final_url,
-        site_score=site_score,
-        ssl_status="Valid" if scrape.ssl_valid else "Invalid",
-        missing_keywords=missing_keywords,
-        competitor_insights=competitor_insights,
-        ad_recommendations=ad_recommendations,
-        response_time_ms=scrape.response_time_ms,
-        title=scrape.title,
-    )
+    if not report.get("missing_keywords"):
+        report["missing_keywords"] = ["localized keywords", "primary CTA"]
+    if not report.get("ai_ad_recommendations"):
+        report["ai_ad_recommendations"] = ["Launch an AdsFind test campaign with intent-led copy."]
+
+    return _build_response(scrape, report)

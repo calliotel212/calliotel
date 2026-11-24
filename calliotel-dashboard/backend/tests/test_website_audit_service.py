@@ -59,7 +59,7 @@ def test_scrape_parses_title_and_meta(mock_client_cls):
     "app.services.website_audit_service.normalize_website_url",
     return_value="https://autorent.example.com/",
 )
-@patch("app.services.website_audit_service._fetch_llm_insights", return_value=None)
+@patch("app.services.website_audit_service._fetch_llm_report", return_value=None)
 @patch("app.services.website_audit_service.scrape_website")
 def test_run_audit_mock_car_rental_keywords(mock_scrape, _mock_llm, _mock_norm):
     mock_scrape.return_value = svc.ScrapeResult(
@@ -72,11 +72,18 @@ def test_run_audit_mock_car_rental_keywords(mock_scrape, _mock_llm, _mock_norm):
         final_url="https://autorent.example.com/",
     )
     out = svc.run_website_audit("https://autorent.example.com")
-    assert 1 <= out.site_score <= 100
+    assert 1 <= out.overall_score <= 100
+    assert out.site_score == out.overall_score
     assert out.ssl_status == "Valid"
     assert out.missing_keywords
-    assert out.ad_recommendations
-    assert "competitor" in out.competitor_insights.lower() or "airport" in out.competitor_insights.lower()
+    assert out.ai_ad_recommendations
+    assert out.ad_recommendations == out.ai_ad_recommendations
+    assert out.traffic_estimate.level in ("Low", "Medium", "High")
+    assert out.seo_health.score >= 1
+    assert out.seo_health.quick_wins
+    assert isinstance(out.competitor_insights, list)
+    assert len(out.competitor_insights) >= 1
+    assert any("airport" in c.lower() for c in out.competitor_insights)
 
 
 @patch("app.services.website_audit_service.httpx.Client")
