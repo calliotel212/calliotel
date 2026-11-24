@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -23,7 +24,9 @@ PLATFORM_NAME = "Calliotel Voice Platform"
 
 
 def seed() -> str:
-    raw_key = generate_publisher_api_key()
+    raw_key = (os.environ.get("PLATFORM_PUBLISHER_API_KEY") or "").strip()
+    if not raw_key:
+        raw_key = generate_publisher_api_key()
     with SessionLocal() as db:
         user = db.scalar(select(PublisherUser).where(PublisherUser.email == PLATFORM_EMAIL))
         if user is not None:
