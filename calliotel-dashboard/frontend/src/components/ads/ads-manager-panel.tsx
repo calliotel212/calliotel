@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { AdClicksChart } from "@/components/charts/ad-clicks-chart";
 import { CampaignTable } from "@/components/ads/campaign-table";
 import { CampaignWizard } from "@/components/ads/campaign-wizard";
 import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
@@ -121,10 +122,10 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
 
       <ShieldBadge blocked={blockedFraud} dark={dark} />
 
+      <AdClicksChart dark={dark} />
+
       <section
-        className={`rounded-xl border p-6 ${
-          dark ? "border-slate-700 bg-ads-slate" : "border-slate-200 bg-white shadow-sm"
-        }`}
+        className={`p-6 ${dark ? "glass-panel border-slate-700" : "rounded-xl border border-slate-200 bg-white shadow-sm"}`}
       >
         <h2 className={`text-lg font-semibold ${dark ? "text-white" : "text-slate-900"}`}>Wallet</h2>
         <p className="mt-2 text-3xl font-bold text-ads-teal-dark">${balance}</p>

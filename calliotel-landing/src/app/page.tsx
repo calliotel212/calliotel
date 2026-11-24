@@ -1,5 +1,6 @@
 import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/components/hero";
+import { AuditStrategyWidget } from "@/components/audit-strategy-widget";
 import { LiveDemo } from "@/components/live-demo";
 import { HowItWorks } from "@/components/how-it-works";
 import { Pricing } from "@/components/pricing";
@@ -11,6 +12,7 @@ export default function HomePage() {
       <SiteHeader />
       <main>
         <Hero />
+        <AuditStrategyWidget />
         <LiveDemo />
         <HowItWorks />
         <Pricing />
