@@ -80,7 +80,7 @@ export function AuditStrategyWidget() {
               disabled={loading || websiteUrl.trim().length < 4}
               className="btn-primary-glow min-h-12 shrink-0 px-8 py-3 text-base disabled:opacity-60"
             >
-              {loading ? "Analyzing…" : "Generate Free Audit"}
+              {loading ? "Analyzing…" : "Generate Premium Audit"}
             </button>
           </form>
         </div>
