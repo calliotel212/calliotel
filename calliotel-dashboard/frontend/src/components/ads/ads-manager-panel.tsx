@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AdClicksChart } from "@/components/charts/ad-clicks-chart";
+import { GaugeRing } from "@/components/charts/gauge-ring";
 import { CampaignTable } from "@/components/ads/campaign-table";
 import { CampaignWizard } from "@/components/ads/campaign-wizard";
 import { apiGet, apiPatch, apiPost } from "@/lib/api-client";
@@ -106,6 +107,9 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
     }
   }
 
+  const walletHealth = walletHealthScore(balance);
+  const shieldHealth = shieldProtectionScore(blockedFraud);
+
   return (
     <div className="space-y-8">
       {error ? (
@@ -120,7 +124,24 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
 
       {hasReviewQueue ? <ReviewBanner dark={dark} /> : null}
 
-      <ShieldBadge blocked={blockedFraud} dark={dark} />
+      <section className="grid gap-4 sm:grid-cols-2">
+        <GaugeRing
+          value={walletHealth}
+          label="Wallet health"
+          detail={`$${balance} available — fund campaigns to improve readiness`}
+          size="md"
+        />
+        <GaugeRing
+          value={shieldHealth}
+          label="Shield / fraud score"
+          detail={
+            blockedFraud === 0
+              ? "Protection active — no bot clicks blocked yet"
+              : `${blockedFraud.toLocaleString()} fraudulent click${blockedFraud === 1 ? "" : "s"} blocked`
+          }
+          size="md"
+        />
+      </section>
 
       <AdClicksChart dark={dark} />
 
@@ -178,25 +199,15 @@ export function AdsManagerPanel({ token, apiBase, theme = "dark", showTargeting 
   );
 }
 
-function ShieldBadge({ blocked, dark }: { blocked: number; dark: boolean }) {
-  return (
-    <section
-      className={`rounded-xl border px-5 py-4 ${
-        dark
-          ? "border-teal-700/40 bg-gradient-to-r from-teal-950/50 to-ads-slate"
-          : "border-teal-200 bg-teal-50"
-      }`}
-    >
-      <p className={`text-sm font-semibold ${dark ? "text-teal-100" : "text-teal-900"}`}>
-        Protected by AdsFind Shield
-      </p>
-      <p className={`mt-1 text-sm ${dark ? "text-slate-300" : "text-teal-800"}`}>
-        {blocked === 0
-          ? "Duplicate click protection is active — no bot clicks blocked yet."
-          : `${blocked.toLocaleString()} bot click${blocked === 1 ? "" : "s"} blocked.`}
-      </p>
-    </section>
-  );
+function walletHealthScore(balanceUsd: string): number {
+  const balance = Number(balanceUsd) || 0;
+  if (balance <= 0) return 12;
+  return Math.min(100, Math.round(balance / 10));
+}
+
+/** Higher score when shield has actively blocked fraud; baseline reflects protection being on. */
+function shieldProtectionScore(blockedFraud: number): number {
+  return Math.min(100, 68 + Math.min(blockedFraud, 16) * 2);
 }
 
 function ReviewBanner({ dark }: { dark: boolean }) {

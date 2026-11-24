@@ -32,11 +32,9 @@ export function AdClicksChart({ dark = true, data = MOCK_AD_CLICKS_7D }: Props) 
 
   return (
     <div
-      className={`rounded-xl border p-5 backdrop-blur-md ${
-        dark
-          ? "border-slate-700/80 bg-slate-900/40 shadow-lg shadow-black/20"
-          : "border-slate-200 bg-white shadow-sm"
-      }`}
+      className={
+        dark ? "glass-panel p-5" : "rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+      }
     >
       <h3 className={`text-sm font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
         Ad clicks over the last 7 days
